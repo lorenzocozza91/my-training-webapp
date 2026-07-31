@@ -1,0 +1,215 @@
+<section class="home-page">
+  <div class="filters">
+    <p-datepicker
+      [(ngModel)]="range"
+      selectionMode="range"
+      dataType="date"
+      [showIcon]="true"
+      [showButtonBar]="true"
+      [numberOfMonths]="1"
+      placeholder="Select a date range"
+      (onSelect)="applyRange()"
+    ></p-datepicker>
+
+    <p-button label="Refresh" [outlined]="true" [disabled]="loading()" (click)="load()" />
+
+    <div class="spacer"></div>
+
+    <p-selectbutton
+      [options]="filterOptions"
+      [(ngModel)]="sportFilter"
+      optionLabel="label"
+      optionValue="value"
+    />
+  </div>
+
+  <div class="content">
+    @if (loading()) {
+      <div class="summary-grid">
+        @for (skeleton of [0, 1, 2, 3, 4]; track skeleton) {
+          <p-skeleton height="6.5rem" borderRadius="1rem"></p-skeleton>
+        }
+      </div>
+      <div class="feed-skeleton">
+        @for (skeleton of [0, 1, 2, 3]; track skeleton) {
+          <p-skeleton height="6rem" borderRadius="1rem"></p-skeleton>
+        }
+      </div>
+    } @else if (error()) {
+      <p-message severity="error">{{ error() }}</p-message>
+    } @else {
+      <div class="summary-grid">
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #3b82f6">
+            <svg data-p-icon="hashtag" size="1.2rem"></svg>
+          </div>
+          <div class="stat-value">{{ totals().count }}</div>
+          <div class="stat-label">Activities</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #f59e0b">
+            <svg data-p-icon="map-marker" size="1.2rem"></svg>
+          </div>
+          <div class="stat-value">{{ fmt.distance(totals().distance) }}</div>
+          <div class="stat-label">Distance</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #8b5cf6">
+            <svg data-p-icon="clock" size="1.2rem"></svg>
+          </div>
+          <div class="stat-value">{{ fmt.duration(totals().duration) }}</div>
+          <div class="stat-label">Moving time</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #10b981">
+            <svg data-p-icon="arrow-up" size="1.2rem"></svg>
+          </div>
+          <div class="stat-value">{{ fmt.elevation(totals().ascent) }}</div>
+          <div class="stat-label">Elevation</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background: #ef4444">
+            <svg data-p-icon="bolt" size="1.2rem"></svg>
+          </div>
+          <div class="stat-value">{{ fmt.calories(totals().calories) }}</div>
+          <div class="stat-label">Calories</div>
+        </div>
+      </div>
+
+      <div class="activity-feed">
+        @for (group of groups(); track group.key) {
+          <div class="day-group">
+            <div class="day-header">
+              <span class="day-title">{{ group.date | date: 'EEEE, d MMMM' }}</span>
+              <span class="day-totals">
+                {{ group.activities.length }} activities ·
+                {{ fmt.distance(groupTotals(group).distance) }} ·
+                {{ fmt.duration(groupTotals(group).duration) }}
+              </span>
+            </div>
+
+            <div class="activity-list">
+              @for (activity of group.activities; track activity.id) {
+                <div class="activity-card">
+                  <div class="activity-main">
+                    <p-avatar
+                      shape="circle"
+                      [style]="{ background: sportMeta(activity.sport).color, width: '3.4rem', height: '3.4rem' }"
+                    >
+                      @switch (activity.sport) {
+                        @case ('running') {
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            style="color: #ffffff; width: 1.6rem; height: 1.6rem"
+                          >
+                            <circle cx="13" cy="4" r="2"></circle>
+                            <path d="M16 6l2.5 2.5"></path>
+                            <path d="M13 6.5l-2 2 1 3"></path>
+                            <path d="M12 11.5L9.5 14"></path>
+                            <path d="M9.5 14L6 17.5"></path>
+                            <path d="M13.5 11.5L16 15.5"></path>
+                          </svg>
+                        }
+                        @case ('cycling') {
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.8"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            style="color: #ffffff; width: 1.7rem; height: 1.7rem"
+                          >
+                            <circle cx="5.5" cy="17" r="3.5"></circle>
+                            <circle cx="18.5" cy="17" r="3.5"></circle>
+                            <circle cx="11" cy="14" r="0.8"></circle>
+                            <path d="M10 8L11 14"></path>
+                            <path d="M10 8L16 9.5"></path>
+                            <path d="M11 14L16 9.5"></path>
+                            <path d="M11 14L5.5 17"></path>
+                            <path d="M10 8L5.5 17"></path>
+                            <path d="M16 9.5L18.5 17"></path>
+                            <path d="M16 9.5V7.5"></path>
+                            <path d="M11 14l2 3"></path>
+                          </svg>
+                        }
+                        @default {
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            style="color: #ffffff; width: 1.5rem; height: 1.5rem"
+                          >
+                            <path
+                              d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                            ></path>
+                          </svg>
+                        }
+                      }
+                    </p-avatar>
+
+                    <div class="activity-info">
+                      <div class="activity-name">{{ activity.name }}</div>
+                      <div class="activity-sub">
+                        <span>{{ activity.startedAt | date: 'EEE, HH:mm' }}</span>
+                        <span class="dot">·</span>
+                        <span [style.color]="sportMeta(activity.sport).color">
+                          {{ sportMeta(activity.sport).label }}
+                        </span>
+                        @if (activity.averageHeartRateBpm) {
+                          <span class="dot">·</span>
+                          <span class="hr"><svg data-p-icon="heart" size="0.8rem"></svg> {{ activity.averageHeartRateBpm }}</span>
+                        }
+                      </div>
+                    </div>
+
+                    <div class="activity-stats">
+                      <div class="stat">
+                        <div class="stat-value">{{ fmt.distance(activity.distanceMeters) }}</div>
+                        <div class="stat-label">Distance</div>
+                      </div>
+                      <div class="stat">
+                        <div class="stat-value">{{ fmt.duration(activity.durationSeconds) }}</div>
+                        <div class="stat-label">Time</div>
+                      </div>
+                      <div class="stat">
+                        @if (activity.sport === 'running') {
+                          <div class="stat-value">{{ fmt.pace(activity.averageSpeedMetersPerSecond) }}</div>
+                          <div class="stat-label">Avg Pace</div>
+                        } @else {
+                          <div class="stat-value">{{ fmt.speed(activity.averageSpeedMetersPerSecond) }}</div>
+                          <div class="stat-label">Avg Speed</div>
+                        }
+                      </div>
+                      <div class="stat">
+                        <div class="stat-value">{{ fmt.elevation(activity.ascentMeters) }}</div>
+                        <div class="stat-label">Elevation</div>
+                      </div>
+                      <div class="stat">
+                        <div class="stat-value">{{ fmt.calories(activity.calories) }}</div>
+                        <div class="stat-label">Calories</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        } @empty {
+          <div class="empty">
+            <div class="empty-icon"><svg data-p-icon="chart-line" size="2.5rem"></svg></div>
+            <p>No activities in this period.</p>
+            <p class="empty-hint">Try a wider date range.</p>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</section>

@@ -1,0 +1,37 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.top-menu {
+  border-radius: 0;
+  border-inline: 0;
+  border-top: 0;
+  flex-shrink: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 1.5rem;
+  text-decoration: none;
+  color: var(--p-text-color);
+}
+
+.brand-logo {
+  width: 1.6rem;
+  height: 1.6rem;
+  color: var(--p-primary-color);
+}
+
+.brand-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+.menubar-item-label {
+  margin-left: 0.5rem;
+}
