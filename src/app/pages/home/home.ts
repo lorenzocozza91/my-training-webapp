@@ -1,19 +1,13 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
-import { DatePicker } from 'primeng/datepicker';
-import { SelectButton } from 'primeng/selectbutton';
-import { Button } from 'primeng/button';
-import { Avatar } from 'primeng/avatar';
-import { Skeleton } from 'primeng/skeleton';
-import { Message } from 'primeng/message';
-import { Bolt } from '@primeicons/angular/bolt';
-import { ArrowUp } from '@primeicons/angular/arrow-up';
-import { Hashtag } from '@primeicons/angular/hashtag';
-import { MapMarker } from '@primeicons/angular/map-marker';
-import { Clock } from '@primeicons/angular/clock';
-import { Heart } from '@primeicons/angular/heart';
-import { ChartLine } from '@primeicons/angular/chart-line';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { ActivityService } from '../../services/activity.service';
 import { Activity } from '../../models/activity';
@@ -41,19 +35,13 @@ interface ActivityGroup {
   imports: [
     FormsModule,
     DatePipe,
-    DatePicker,
-    SelectButton,
-    Button,
-    Avatar,
-    Skeleton,
-    Message,
-    Bolt,
-    ArrowUp,
-    Hashtag,
-    MapMarker,
-    Clock,
-    Heart,
-    ChartLine
+    MatFormFieldModule,
+    MatInputModule,
+    MatDatepickerModule,
+    MatButtonModule,
+    MatButtonToggleModule,
+    MatIconModule,
+    MatProgressSpinnerModule
   ],
   templateUrl: './home.html',
   styleUrl: './home.css'
@@ -61,7 +49,8 @@ interface ActivityGroup {
 export class HomeComponent implements OnInit {
   private readonly activityService = inject(ActivityService);
 
-  protected readonly range = signal<Date[] | null>(this.defaultRange());
+  protected readonly rangeStart = signal<Date | null>(this.defaultStart());
+  protected readonly rangeEnd = signal<Date | null>(this.defaultEnd());
   protected readonly sportFilter = signal<SportFilter>('all');
   protected readonly activities = signal<Activity[]>([]);
   protected readonly loading = signal(false);
@@ -69,9 +58,9 @@ export class HomeComponent implements OnInit {
 
   protected readonly filterOptions = [
     { label: 'All', value: 'all' as const },
-    { label: 'Running', value: 'running' as const },
-    { label: 'Cycling', value: 'cycling' as const },
-    { label: 'Training', value: 'training' as const }
+    { label: 'Run', value: 'running' as const },
+    { label: 'Bike', value: 'cycling' as const },
+    { label: 'Train', value: 'training' as const }
   ];
 
   protected readonly fmt = {
@@ -123,10 +112,6 @@ export class HomeComponent implements OnInit {
     this.load();
   }
 
-  protected applyRange(): void {
-    this.load();
-  }
-
   protected load(): void {
     const [from, to] = this.effectiveRange();
     this.loading.set(true);
@@ -137,14 +122,26 @@ export class HomeComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('Could not load activities. Make sure the server is running and reachable.');
+        this.error.set('Could not load activities. Make sure the server is running.');
         this.loading.set(false);
       }
     });
   }
 
+  protected applyRange(): void {
+    this.load();
+  }
+
   protected sportMeta(sport: string) {
     return getSportMeta(sport);
+  }
+
+  protected sportIcon(sport: string): string {
+    switch (sport) {
+      case 'running': return 'directions_run';
+      case 'cycling': return 'directions_bike';
+      default: return 'fitness_center';
+    }
   }
 
   protected groupTotals(group: ActivityGroup) {
@@ -154,15 +151,22 @@ export class HomeComponent implements OnInit {
     };
   }
 
-  private defaultRange(): Date[] {
-    const to = new Date();
-    const from = new Date();
-    from.setDate(from.getDate() - 30);
-    return [from, to];
+  private defaultStart(): Date {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d;
+  }
+
+  private defaultEnd(): Date {
+    return new Date();
   }
 
   private effectiveRange(): Date[] {
-    const value = this.range();
-    return value && value.length === 2 ? value : this.defaultRange();
+    const start = this.rangeStart();
+    const end = this.rangeEnd();
+    if (start && end) {
+      return [start, end];
+    }
+    return [this.defaultStart(), this.defaultEnd()];
   }
 }

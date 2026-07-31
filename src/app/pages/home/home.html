@@ -1,75 +1,88 @@
 <section class="home-page">
   <div class="filters">
-    <p-datepicker
-      [(ngModel)]="range"
-      selectionMode="range"
-      dataType="date"
-      [showIcon]="true"
-      [showButtonBar]="true"
-      [numberOfMonths]="1"
-      placeholder="Select a date range"
-      (onSelect)="applyRange()"
-    ></p-datepicker>
+    <mat-form-field appearance="outline" class="date-field">
+      <mat-date-range-input [rangePicker]="picker">
+        <input matStartDate [(ngModel)]="rangeStart" placeholder="From">
+        <input matEndDate [(ngModel)]="rangeEnd" placeholder="To">
+      </mat-date-range-input>
+      <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+      <mat-date-range-picker #picker (closed)="applyRange()"></mat-date-range-picker>
+    </mat-form-field>
 
-    <p-button label="Refresh" [outlined]="true" [disabled]="loading()" (click)="load()" />
+    <button mat-stroked-button [disabled]="loading()" (click)="load()">
+      <mat-icon>refresh</mat-icon>
+      Refresh
+    </button>
 
-    <div class="spacer"></div>
+    <span class="spacer"></span>
 
-    <p-selectbutton
-      [options]="filterOptions"
-      [(ngModel)]="sportFilter"
-      optionLabel="label"
-      optionValue="value"
-    />
+    <mat-button-toggle-group [(ngModel)]="sportFilter" hideSingleSelectionIndicator>
+      @for (opt of filterOptions; track opt.value) {
+        <mat-button-toggle [value]="opt.value">{{ opt.label }}</mat-button-toggle>
+      }
+    </mat-button-toggle-group>
   </div>
 
   <div class="content">
     @if (loading()) {
       <div class="summary-grid">
-        @for (skeleton of [0, 1, 2, 3, 4]; track skeleton) {
-          <p-skeleton height="6.5rem" borderRadius="1rem"></p-skeleton>
+        @for (s of [0, 1, 2, 3, 4]; track s) {
+          <div class="stat-card skeleton-card"></div>
         }
       </div>
       <div class="feed-skeleton">
-        @for (skeleton of [0, 1, 2, 3]; track skeleton) {
-          <p-skeleton height="6rem" borderRadius="1rem"></p-skeleton>
+        @for (s of [0, 1, 2, 3]; track s) {
+          <div class="activity-skeleton">
+            <div class="skeleton-photo"></div>
+            <div class="skeleton-lines">
+              <div class="skeleton-line w60"></div>
+              <div class="skeleton-line w40"></div>
+            </div>
+            <div class="skeleton-stats">
+              <div class="skeleton-line w30"></div>
+              <div class="skeleton-line w20"></div>
+            </div>
+          </div>
         }
       </div>
     } @else if (error()) {
-      <p-message severity="error">{{ error() }}</p-message>
+      <div class="error-box">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
     } @else {
       <div class="summary-grid">
         <div class="stat-card">
-          <div class="stat-icon" style="background: #3b82f6">
-            <svg data-p-icon="hashtag" size="1.2rem"></svg>
+          <div class="stat-icon" style="background: #3f51b5">
+            <mat-icon>tag</mat-icon>
           </div>
           <div class="stat-value">{{ totals().count }}</div>
           <div class="stat-label">Activities</div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon" style="background: #f59e0b">
-            <svg data-p-icon="map-marker" size="1.2rem"></svg>
+          <div class="stat-icon" style="background: #e91e63">
+            <mat-icon>place</mat-icon>
           </div>
           <div class="stat-value">{{ fmt.distance(totals().distance) }}</div>
           <div class="stat-label">Distance</div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon" style="background: #8b5cf6">
-            <svg data-p-icon="clock" size="1.2rem"></svg>
+          <div class="stat-icon" style="background: #673ab7">
+            <mat-icon>schedule</mat-icon>
           </div>
           <div class="stat-value">{{ fmt.duration(totals().duration) }}</div>
           <div class="stat-label">Moving time</div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon" style="background: #10b981">
-            <svg data-p-icon="arrow-up" size="1.2rem"></svg>
+          <div class="stat-icon" style="background: #009688">
+            <mat-icon>arrow_upward</mat-icon>
           </div>
           <div class="stat-value">{{ fmt.elevation(totals().ascent) }}</div>
           <div class="stat-label">Elevation</div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon" style="background: #ef4444">
-            <svg data-p-icon="bolt" size="1.2rem"></svg>
+          <div class="stat-icon" style="background: #f44336">
+            <mat-icon>bolt</mat-icon>
           </div>
           <div class="stat-value">{{ fmt.calories(totals().calories) }}</div>
           <div class="stat-label">Calories</div>
@@ -81,7 +94,7 @@
           <div class="day-group">
             <div class="day-header">
               <span class="day-title">{{ group.date | date: 'EEEE, d MMMM' }}</span>
-              <span class="day-totals">
+              <span class="day-subtitle">
                 {{ group.activities.length }} activities ·
                 {{ fmt.distance(groupTotals(group).distance) }} ·
                 {{ fmt.duration(groupTotals(group).duration) }}
@@ -90,82 +103,21 @@
 
             <div class="activity-list">
               @for (activity of group.activities; track activity.id) {
-                <div class="activity-card">
-                  <div class="activity-main">
-                    <p-avatar
-                      shape="circle"
-                      [style]="{ background: sportMeta(activity.sport).color, width: '3.4rem', height: '3.4rem' }"
-                    >
-                      @switch (activity.sport) {
-                        @case ('running') {
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="1.8"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            style="color: #ffffff; width: 1.6rem; height: 1.6rem"
-                          >
-                            <circle cx="13" cy="4" r="2"></circle>
-                            <path d="M16 6l2.5 2.5"></path>
-                            <path d="M13 6.5l-2 2 1 3"></path>
-                            <path d="M12 11.5L9.5 14"></path>
-                            <path d="M9.5 14L6 17.5"></path>
-                            <path d="M13.5 11.5L16 15.5"></path>
-                          </svg>
-                        }
-                        @case ('cycling') {
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="1.8"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            style="color: #ffffff; width: 1.7rem; height: 1.7rem"
-                          >
-                            <circle cx="5.5" cy="17" r="3.5"></circle>
-                            <circle cx="18.5" cy="17" r="3.5"></circle>
-                            <circle cx="11" cy="14" r="0.8"></circle>
-                            <path d="M10 8L11 14"></path>
-                            <path d="M10 8L16 9.5"></path>
-                            <path d="M11 14L16 9.5"></path>
-                            <path d="M11 14L5.5 17"></path>
-                            <path d="M10 8L5.5 17"></path>
-                            <path d="M16 9.5L18.5 17"></path>
-                            <path d="M16 9.5V7.5"></path>
-                            <path d="M11 14l2 3"></path>
-                          </svg>
-                        }
-                        @default {
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="currentColor"
-                            style="color: #ffffff; width: 1.5rem; height: 1.5rem"
-                          >
-                            <path
-                              d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                            ></path>
-                          </svg>
-                        }
-                      }
-                    </p-avatar>
+                <div class="activity-card mat-elevation-z1">
+                  <div class="activity-row">
+                    <div class="activity-avatar" [style.background]="sportMeta(activity.sport).color">
+                      <mat-icon>{{ sportIcon(activity.sport) }}</mat-icon>
+                    </div>
 
                     <div class="activity-info">
                       <div class="activity-name">{{ activity.name }}</div>
                       <div class="activity-sub">
                         <span>{{ activity.startedAt | date: 'EEE, HH:mm' }}</span>
                         <span class="dot">·</span>
-                        <span [style.color]="sportMeta(activity.sport).color">
-                          {{ sportMeta(activity.sport).label }}
-                        </span>
+                        <span [style.color]="sportMeta(activity.sport).color">{{ sportMeta(activity.sport).label }}</span>
                         @if (activity.averageHeartRateBpm) {
                           <span class="dot">·</span>
-                          <span class="hr"><svg data-p-icon="heart" size="0.8rem"></svg> {{ activity.averageHeartRateBpm }}</span>
+                          <span class="hr"><mat-icon>favorite</mat-icon> {{ activity.averageHeartRateBpm }}</span>
                         }
                       </div>
                     </div>
@@ -204,7 +156,7 @@
           </div>
         } @empty {
           <div class="empty">
-            <div class="empty-icon"><svg data-p-icon="chart-line" size="2.5rem"></svg></div>
+            <mat-icon class="empty-icon">show_chart</mat-icon>
             <p>No activities in this period.</p>
             <p class="empty-hint">Try a wider date range.</p>
           </div>

@@ -1,23 +1,13 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet, RouterLink } from '@angular/router';
-import { Menubar } from 'primeng/menubar';
-import { MenuItem } from 'primeng/api';
-import { Home } from '@primeicons/angular/home';
-import { Bolt } from '@primeicons/angular/bolt';
-import { ChartLine } from '@primeicons/angular/chart-line';
+import { Component } from '@angular/core';
+import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, Menubar, Home, Bolt, ChartLine],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, MatToolbarModule, MatButtonModule, MatIconModule],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
-export class App {
-  protected readonly title = signal('my-training-webapp');
-
-  protected readonly menuItems: MenuItem[] = [
-    { label: 'Dashboard', icon: 'dashboard', routerLink: ['/'] },
-    { label: 'Training', icon: 'training', routerLink: ['/training'], disabled: true },
-    { label: 'Statistics', icon: 'statistics', routerLink: ['/statistics'], disabled: true }
-  ];
-}
+export class App {}
