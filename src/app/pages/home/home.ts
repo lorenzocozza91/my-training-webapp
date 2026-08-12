@@ -22,6 +22,7 @@ import {
   formatCalories,
   formatIntensity
 } from '../../utils/format';
+import { TrackMapComponent } from '../../components/track-map/track-map';
 
 export type SportFilter = 'all' | 'running' | 'cycling' | 'training';
 
@@ -42,7 +43,8 @@ interface ActivityGroup {
     MatButtonModule,
     MatButtonToggleModule,
     MatIconModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    TrackMapComponent
   ],
   templateUrl: './home.html',
   styleUrl: './home.css'
@@ -73,6 +75,10 @@ export class HomeComponent implements OnInit {
     calories: formatCalories,
     intensity: formatIntensity
   };
+
+  protected readonly expandedIds = signal<Set<number>>(new Set());
+  protected readonly tracks = signal<Record<number, number[][]>>({});
+  protected readonly trackLoadingIds = signal<Set<number>>(new Set());
 
   protected readonly filtered = computed<Activity[]>(() => {
     const filter = this.sportFilter();
@@ -121,6 +127,7 @@ export class HomeComponent implements OnInit {
     this.activityService.getActivities(toDateInputValue(from), toDateInputValue(to)).subscribe({
       next: (response) => {
         this.activities.set(response.activities);
+        this.loadTracks(response.activities);
         this.loading.set(false);
       },
       error: () => {
@@ -132,6 +139,71 @@ export class HomeComponent implements OnInit {
 
   protected applyRange(): void {
     this.load();
+  }
+
+  protected toggleTrack(id: number): void {
+    const expanded = new Set(this.expandedIds());
+    if (expanded.has(id)) {
+      expanded.delete(id);
+      this.expandedIds.set(expanded);
+      return;
+    }
+
+    expanded.add(id);
+    this.expandedIds.set(expanded);
+    if (this.tracks()[id] || this.trackLoadingIds().has(id)) return;
+
+    this.loadTrack(id);
+  }
+
+  protected isExpanded(id: number): boolean {
+    return this.expandedIds().has(id);
+  }
+
+  protected trackCoords(id: number): number[][] {
+    return this.tracks()[id] ?? [];
+  }
+
+  protected trackLoading(id: number): boolean {
+    return this.trackLoadingIds().has(id);
+  }
+
+  private loadTracks(activities: Activity[]): void {
+    this.expandedIds.set(new Set());
+    this.tracks.set({});
+    this.trackLoadingIds.set(new Set(activities.map((activity) => activity.id)));
+
+    for (const activity of activities) {
+      this.loadTrack(activity.id, true);
+    }
+  }
+
+  private loadTrack(id: number, autoExpand = false): void {
+    const loading = new Set(this.trackLoadingIds());
+    loading.add(id);
+    this.trackLoadingIds.set(loading);
+
+    this.activityService.getActivityTrack(id).subscribe({
+      next: (response) => {
+        const coords = response.track.coordinates ?? [];
+        this.tracks.update((tracks) => ({ ...tracks, [id]: coords }));
+        this.finishTrackLoading(id);
+        if (autoExpand && coords.length >= 2) {
+          this.expandedIds.update((ids) => new Set(ids).add(id));
+        }
+      },
+      error: () => {
+        this.finishTrackLoading(id);
+      }
+    });
+  }
+
+  private finishTrackLoading(id: number): void {
+    this.trackLoadingIds.update((ids) => {
+      const next = new Set(ids);
+      next.delete(id);
+      return next;
+    });
   }
 
   protected sportMeta(sport: string) {

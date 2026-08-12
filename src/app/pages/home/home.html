@@ -153,7 +153,25 @@
                         <div class="stat-label">Calories</div>
                       </div>
                     </div>
+
+                    <button mat-icon-button class="map-toggle" (click)="toggleTrack(activity.id)">
+                      <mat-icon>{{ isExpanded(activity.id) ? 'close' : 'map' }}</mat-icon>
+                    </button>
                   </div>
+
+                  @if (isExpanded(activity.id)) {
+                    <div class="track-section">
+                      @if (trackLoading(activity.id)) {
+                        <div class="track-placeholder">
+                          <mat-spinner diameter="32"></mat-spinner>
+                        </div>
+                      } @else if (trackCoords(activity.id).length > 0) {
+                        <app-track-map [coordinates]="trackCoords(activity.id)"></app-track-map>
+                      } @else {
+                        <div class="track-placeholder">No track data available.</div>
+                      }
+                    </div>
+                  }
                 </div>
               }
             </div>

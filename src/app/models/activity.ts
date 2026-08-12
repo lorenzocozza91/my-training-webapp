@@ -26,3 +26,11 @@ export interface Activity {
 export interface ActivitiesResponse {
   activities: Activity[];
 }
+
+export interface TrackResponse {
+  id: number;
+  track: {
+    type: 'LineString';
+    coordinates: number[][];
+  };
+}

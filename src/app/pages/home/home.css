@@ -223,6 +223,25 @@
   color: #9e9e9e;
 }
 
+.map-toggle {
+  flex-shrink: 0;
+  margin-left: 0.25rem;
+}
+
+.track-section {
+  border-top: 1px solid #e0e0e0;
+}
+
+.track-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 240px;
+  color: #9e9e9e;
+  background: #fafafa;
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+
 .error-box {
   display: flex;
   align-items: center;
