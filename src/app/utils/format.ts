@@ -44,3 +44,8 @@ export function formatCalories(calories: number | null | undefined): string {
   if (calories == null) return '—';
   return `${Math.round(calories)} kcal`;
 }
+
+export function formatIntensity(ifactor: number | null | undefined): string {
+  if (ifactor == null) return '—';
+  return `${Math.round(ifactor * 100)} %`;
+}

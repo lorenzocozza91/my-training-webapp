@@ -19,7 +19,8 @@ import {
   formatSpeed,
   formatPace,
   formatElevation,
-  formatCalories
+  formatCalories,
+  formatIntensity
 } from '../../utils/format';
 
 export type SportFilter = 'all' | 'running' | 'cycling' | 'training';
@@ -69,7 +70,8 @@ export class HomeComponent implements OnInit {
     speed: formatSpeed,
     pace: formatPace,
     elevation: formatElevation,
-    calories: formatCalories
+    calories: formatCalories,
+    intensity: formatIntensity
   };
 
   protected readonly filtered = computed<Activity[]>(() => {

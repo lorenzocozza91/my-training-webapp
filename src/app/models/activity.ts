@@ -18,6 +18,7 @@ export interface Activity {
   maxCadenceRpm: number | null;
   averagePowerWatts: number | null;
   maxPowerWatts: number | null;
+  intensityFactor: number | null;
   cycling: boolean;
   running: boolean;
 }
