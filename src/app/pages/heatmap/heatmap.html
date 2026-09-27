@@ -1,0 +1,53 @@
+<section class="heatmap-page">
+  <div class="filters">
+    <mat-form-field appearance="outline" class="date-field">
+      <mat-label>Date range (optional)</mat-label>
+      <mat-date-range-input [rangePicker]="picker">
+        <input matStartDate [(ngModel)]="rangeStart" placeholder="From" />
+        <input matEndDate [(ngModel)]="rangeEnd" placeholder="To" />
+      </mat-date-range-input>
+      <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+      <mat-date-range-picker #picker (closed)="filtersChanged()"></mat-date-range-picker>
+    </mat-form-field>
+
+    <span class="spacer"></span>
+
+    <mat-button-toggle-group
+      aria-label="Heatmap sport"
+      [(ngModel)]="sport"
+      (change)="filtersChanged()"
+      hideSingleSelectionIndicator
+    >
+      <mat-button-toggle value="running">
+        <mat-icon>directions_run</mat-icon>
+        Running
+      </mat-button-toggle>
+      <mat-button-toggle value="cycling">
+        <mat-icon>directions_bike</mat-icon>
+        Cycling
+      </mat-button-toggle>
+    </mat-button-toggle-group>
+  </div>
+
+  <div class="map-shell">
+    <app-heatmap-map [cells]="cells()" (viewportChange)="onViewportChange($event)">
+    </app-heatmap-map>
+
+    @if (loading()) {
+      <div class="status loading-status">
+        <mat-spinner diameter="20"></mat-spinner>
+        <span>Loading heatmap…</span>
+      </div>
+    }
+
+    @if (error()) {
+      <div class="status error-status">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ error() }}</span>
+        <button mat-button (click)="retry()">Retry</button>
+      </div>
+    } @else if (hasLoaded() && !loading() && cells().length === 0) {
+      <div class="status empty-status">No activity data in this area.</div>
+    }
+  </div>
+</section>
