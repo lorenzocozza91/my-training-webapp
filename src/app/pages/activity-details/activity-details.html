@@ -1,0 +1,54 @@
+<section class="details-page">
+  <a mat-button routerLink="/" [queryParams]="backParams"
+    ><mat-icon>arrow_back</mat-icon>Back to activities</a
+  >
+
+  @if (loading()) {
+    <div class="placeholder" role="status">
+      <mat-spinner diameter="40" /><span>Loading activity…</span>
+    </div>
+  } @else if (error()) {
+    <div class="error-box" role="alert">
+      <mat-icon>error_outline</mat-icon><span>{{ error() }}</span>
+    </div>
+  } @else if (activity(); as activity) {
+    <header class="activity-header">
+      <div class="sport-icon" [style.background]="meta().color">
+        <mat-icon>{{ icon() }}</mat-icon>
+      </div>
+      <div>
+        <h1>{{ activity.name }}</h1>
+        <p>
+          <span [style.color]="meta().color">{{ meta().label }}</span> ·
+          {{ activity.startedAt | date: 'EEEE, d MMMM yyyy, HH:mm' }}
+        </p>
+      </div>
+    </header>
+
+    <dl class="metrics-grid" aria-label="Activity metrics">
+      @for (metric of metrics(); track metric.label) {
+        <div class="metric-card">
+          <dt>{{ metric.label }}</dt>
+          <dd>{{ metric.value }}</dd>
+        </div>
+      }
+    </dl>
+
+    @if (kind() !== 'training' || trackLoading() || trackError() || coordinates().length >= 2) {
+      <section class="map-section" aria-labelledby="route-title">
+        <h2 id="route-title">Route map</h2>
+        @if (trackLoading()) {
+          <div class="placeholder" role="status">
+            <mat-spinner diameter="32" /><span>Loading route…</span>
+          </div>
+        } @else if (trackError()) {
+          <div class="placeholder" role="status">Could not load the route map.</div>
+        } @else if (coordinates().length >= 2) {
+          <app-track-map [coordinates]="coordinates()" />
+        } @else {
+          <div class="placeholder">No track data available.</div>
+        }
+      </section>
+    }
+  }
+</section>

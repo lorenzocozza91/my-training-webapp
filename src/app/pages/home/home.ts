@@ -1,6 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -37,6 +38,7 @@ interface ActivityGroup {
   imports: [
     FormsModule,
     DatePipe,
+    RouterLink,
     MatFormFieldModule,
     MatInputModule,
     MatDatepickerModule,
@@ -51,6 +53,14 @@ interface ActivityGroup {
 })
 export class HomeComponent implements OnInit {
   private readonly activityService = inject(ActivityService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
+  protected readonly filterParams = computed(() => ({
+    from: this.rangeStart() ? toDateInputValue(this.rangeStart()!) : null,
+    to: this.rangeEnd() ? toDateInputValue(this.rangeEnd()!) : null,
+    sport: this.sportFilter()
+  }));
 
   protected readonly rangeStart = signal<Date | null>(this.defaultStart());
   protected readonly rangeEnd = signal<Date | null>(this.defaultEnd());
@@ -87,7 +97,7 @@ export class HomeComponent implements OnInit {
     if (filter === 'all') {
       return list;
     }
-    return list.filter((a) => a.sport === filter);
+    return list.filter((a) => a.sport === filter || (filter === 'training' && a.sport === 'cardio'));
   });
 
   protected readonly groups = computed<ActivityGroup[]>(() => {
@@ -117,6 +127,16 @@ export class HomeComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    const params = this.route.snapshot.queryParamMap;
+    for (const [key, target] of [['from', this.rangeStart], ['to', this.rangeEnd]] as const) {
+      const value = params.get(key);
+      if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const date = new Date(`${value}T00:00:00`);
+        if (!Number.isNaN(date.getTime())) target.set(date);
+      }
+    }
+    const sport = params.get('sport');
+    if (sport === 'running' || sport === 'cycling' || sport === 'training') this.sportFilter.set(sport);
     this.load();
   }
 
@@ -138,7 +158,12 @@ export class HomeComponent implements OnInit {
   }
 
   protected applyRange(): void {
+    this.saveFilters();
     this.load();
+  }
+
+  protected saveFilters(): void {
+    void this.router.navigate([], { relativeTo: this.route, queryParams: this.filterParams(), replaceUrl: true });
   }
 
   protected toggleTrack(id: number): void {

@@ -16,7 +16,7 @@
 
     <span class="spacer"></span>
 
-    <mat-button-toggle-group [(ngModel)]="sportFilter" hideSingleSelectionIndicator>
+    <mat-button-toggle-group [(ngModel)]="sportFilter" (ngModelChange)="saveFilters()" hideSingleSelectionIndicator>
       @for (opt of filterOptions; track opt.value) {
         <mat-button-toggle [value]="opt.value">{{ opt.label }}</mat-button-toggle>
       }
@@ -105,56 +105,57 @@
               @for (activity of group.activities; track activity.id) {
                 <div class="activity-card mat-elevation-z1">
                   <div class="activity-row">
-                    <div class="activity-avatar" [style.background]="sportMeta(activity.sport).color">
-                      <mat-icon>{{ sportIcon(activity.sport) }}</mat-icon>
-                    </div>
+                    <a class="activity-open" [routerLink]="['/activities', activity.id]" [queryParams]="filterParams()" [attr.aria-label]="'View details for ' + activity.name">
+                      <div class="activity-avatar" [style.background]="sportMeta(activity.sport).color">
+                        <mat-icon>{{ sportIcon(activity.sport) }}</mat-icon>
+                      </div>
 
-                    <div class="activity-info">
-                      <div class="activity-name">{{ activity.name }}</div>
-                      <div class="activity-sub">
-                        <span>{{ activity.startedAt | date: 'EEE, HH:mm' }}</span>
-                        <span class="dot">·</span>
-                        <span [style.color]="sportMeta(activity.sport).color">{{ sportMeta(activity.sport).label }}</span>
-                        @if (activity.averageHeartRateBpm) {
+                      <div class="activity-info">
+                        <div class="activity-name">{{ activity.name }}</div>
+                        <div class="activity-sub">
+                          <span>{{ activity.startedAt | date: 'EEE, HH:mm' }}</span>
                           <span class="dot">·</span>
-                          <span class="hr"><mat-icon>favorite</mat-icon> {{ activity.averageHeartRateBpm }}</span>
-                        }
+                          <span [style.color]="sportMeta(activity.sport).color">{{ sportMeta(activity.sport).label }}</span>
+                          @if (activity.averageHeartRateBpm) {
+                            <span class="dot">·</span>
+                            <span class="hr"><mat-icon>favorite</mat-icon> {{ activity.averageHeartRateBpm }}</span>
+                          }
+                        </div>
                       </div>
-                    </div>
 
-                    <div class="activity-stats">
-                      <div class="stat">
-                        <div class="stat-value">{{ fmt.distance(activity.distanceMeters) }}</div>
-                        <div class="stat-label">Distance</div>
+                      <div class="activity-stats">
+                        <div class="stat">
+                          <div class="stat-value">{{ fmt.distance(activity.distanceMeters) }}</div>
+                          <div class="stat-label">Distance</div>
+                        </div>
+                        <div class="stat">
+                          <div class="stat-value">{{ fmt.duration(activity.durationSeconds) }}</div>
+                          <div class="stat-label">Time</div>
+                        </div>
+                        <div class="stat">
+                          @if (activity.sport === 'running') {
+                            <div class="stat-value">{{ fmt.pace(activity.averageSpeedMetersPerSecond) }}</div>
+                            <div class="stat-label">Avg Pace</div>
+                          } @else {
+                            <div class="stat-value">{{ fmt.speed(activity.averageSpeedMetersPerSecond) }}</div>
+                            <div class="stat-label">Avg Speed</div>
+                          }
+                        </div>
+                        <div class="stat">
+                          <div class="stat-value">{{ fmt.intensity(activity.intensityFactor) }}</div>
+                          <div class="stat-label">IF</div>
+                        </div>
+                        <div class="stat">
+                          <div class="stat-value">{{ fmt.elevation(activity.ascentMeters) }}</div>
+                          <div class="stat-label">Elevation</div>
+                        </div>
+                        <div class="stat">
+                          <div class="stat-value">{{ fmt.calories(activity.calories) }}</div>
+                          <div class="stat-label">Calories</div>
+                        </div>
                       </div>
-                      <div class="stat">
-                        <div class="stat-value">{{ fmt.duration(activity.durationSeconds) }}</div>
-                        <div class="stat-label">Time</div>
-                      </div>
-                      <div class="stat">
-                        @if (activity.sport === 'running') {
-                          <div class="stat-value">{{ fmt.pace(activity.averageSpeedMetersPerSecond) }}</div>
-                          <div class="stat-label">Avg Pace</div>
-                        } @else {
-                          <div class="stat-value">{{ fmt.speed(activity.averageSpeedMetersPerSecond) }}</div>
-                          <div class="stat-label">Avg Speed</div>
-                        }
-                      </div>
-                      <div class="stat">
-                        <div class="stat-value">{{ fmt.intensity(activity.intensityFactor) }}</div>
-                        <div class="stat-label">IF</div>
-                      </div>
-                      <div class="stat">
-                        <div class="stat-value">{{ fmt.elevation(activity.ascentMeters) }}</div>
-                        <div class="stat-label">Elevation</div>
-                      </div>
-                      <div class="stat">
-                        <div class="stat-value">{{ fmt.calories(activity.calories) }}</div>
-                        <div class="stat-label">Calories</div>
-                      </div>
-                    </div>
-
-                    <button mat-icon-button class="map-toggle" (click)="toggleTrack(activity.id)">
+                    </a>
+                    <button mat-icon-button class="map-toggle" (click)="toggleTrack(activity.id)" [attr.aria-label]="(isExpanded(activity.id) ? 'Hide map for ' : 'Show map for ') + activity.name">
                       <mat-icon>{{ isExpanded(activity.id) ? 'close' : 'map' }}</mat-icon>
                     </button>
                   </div>
