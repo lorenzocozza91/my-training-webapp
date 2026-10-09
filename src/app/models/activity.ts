@@ -27,6 +27,21 @@ export interface ActivitiesResponse {
   activities: Activity[];
 }
 
+export interface ActivitySample {
+  timestamp: string;
+  distanceMeters: number | null;
+  heartRateBpm: number | null;
+  paceMinutesPerKilometer: number | null;
+  altitudeMeters: number | null;
+  gradePercent: number | null;
+  gapMinutesPerKilometer: number | null;
+}
+
+export interface ActivitySamplesResponse {
+  id: number;
+  samples: ActivitySample[];
+}
+
 export interface TrackResponse {
   id: number;
   track: {

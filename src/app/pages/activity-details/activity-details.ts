@@ -3,11 +3,12 @@ import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, of, switchMap, tap } from 'rxjs';
+import { Subject, catchError, merge, of, startWith, switchMap, tap } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Activity } from '../../models/activity';
+import { Activity, ActivitySample } from '../../models/activity';
+import { ActivityChartsComponent } from '../../components/activity-charts/activity-charts';
 import { getSportMeta } from '../../models/sport';
 import { ActivityService } from '../../services/activity.service';
 import { TrackMapComponent } from '../../components/track-map/track-map';
@@ -35,6 +36,7 @@ interface Metric {
     MatIconModule,
     MatProgressSpinnerModule,
     TrackMapComponent,
+    ActivityChartsComponent,
   ],
   templateUrl: './activity-details.html',
   styleUrl: './activity-details.css',
@@ -49,6 +51,15 @@ export class ActivityDetailsComponent {
   protected readonly coordinates = signal<number[][]>([]);
   protected readonly trackLoading = signal(false);
   protected readonly trackError = signal(false);
+  protected readonly samples = signal<ActivitySample[]>([]);
+  protected readonly samplesLoading = signal(false);
+  protected readonly samplesError = signal<string | null>(null);
+  private readonly samplesRetry = new Subject<void>();
+
+  protected retrySamples(): void {
+    this.samplesRetry.next();
+  }
+
   protected readonly kind = computed(() => {
     const activity = this.activity();
     if (activity?.sport === 'running' || activity?.running) return 'running';
@@ -108,6 +119,9 @@ export class ActivityDetailsComponent {
           this.coordinates.set([]);
           this.trackLoading.set(false);
           this.trackError.set(false);
+          this.samples.set([]);
+          this.samplesLoading.set(false);
+          this.samplesError.set(null);
         }),
         switchMap((params) => {
           const rawId = params.get('id');
@@ -123,22 +137,52 @@ export class ActivityDetailsComponent {
               this.loading.set(false);
               this.trackLoading.set(true);
             }),
-            switchMap(() =>
-              this.service.getActivityTrack(id).pipe(
-                tap((response) => {
-                  this.coordinates.set(
-                    (response.track.coordinates ?? []).filter(
-                      (point) =>
-                        point.length >= 2 && Number.isFinite(point[0]) && Number.isFinite(point[1]),
-                    ),
-                  );
-                  this.trackLoading.set(false);
-                }),
-                catchError(() => {
-                  this.trackError.set(true);
-                  this.trackLoading.set(false);
-                  return of(null);
-                }),
+            switchMap((activity) =>
+              merge(
+                activity.sport === 'running'
+                  ? this.samplesRetry.pipe(
+                      startWith(undefined),
+                      tap(() => {
+                        this.samplesLoading.set(true);
+                        this.samplesError.set(null);
+                      }),
+                      switchMap(() =>
+                        this.service.getActivitySamples(id).pipe(
+                          tap((response) => {
+                            this.samples.set(response.samples);
+                            this.samplesLoading.set(false);
+                          }),
+                          catchError((error: HttpErrorResponse) => {
+                            this.samplesError.set(
+                              error.status === 404
+                                ? 'Samples for this activity were not found.'
+                                : 'Could not load activity samples. Please try again.',
+                            );
+                            this.samplesLoading.set(false);
+                            return of(null);
+                          }),
+                        ),
+                      ),
+                    )
+                  : of(null),
+                this.service.getActivityTrack(id).pipe(
+                  tap((response) => {
+                    this.coordinates.set(
+                      (response.track.coordinates ?? []).filter(
+                        (point) =>
+                          point.length >= 2 &&
+                          Number.isFinite(point[0]) &&
+                          Number.isFinite(point[1]),
+                      ),
+                    );
+                    this.trackLoading.set(false);
+                  }),
+                  catchError(() => {
+                    this.trackError.set(true);
+                    this.trackLoading.set(false);
+                    return of(null);
+                  }),
+                ),
               ),
             ),
             catchError((error: HttpErrorResponse) => {

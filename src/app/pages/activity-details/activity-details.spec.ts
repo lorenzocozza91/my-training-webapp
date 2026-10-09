@@ -79,6 +79,7 @@ describe('Activity details', () => {
     const listUrl = `${environment.apiBaseUrl}/activities?from=2026-09-01&to=2026-10-01`;
     await harness.navigateByUrl(dashboardUrl);
     http.expectOne(listUrl).flush({ activities: [activity] });
+    http.match(`${url}/samples`).forEach((request) => request.flush({ id: 7, samples: [] }));
     http.expectOne(`${url}/track`).flush({ id: 7, track: { type: 'LineString', coordinates: [] } });
     harness.detectChanges();
 
@@ -91,6 +92,7 @@ describe('Activity details', () => {
     await harness.fixture.whenStable();
     expect(router.url).toBe('/activities/7?from=2026-09-01&to=2026-10-01&sport=running');
     http.expectNone(url);
+    http.match(`${url}/samples`).forEach((request) => request.flush({ id: 7, samples: [] }));
     http.expectOne(`${url}/track`).flush({ id: 7, track: { type: 'LineString', coordinates: [] } });
     harness.detectChanges();
 
@@ -98,6 +100,7 @@ describe('Activity details', () => {
     await harness.fixture.whenStable();
     expect(router.url).toBe(dashboardUrl);
     http.expectOne(listUrl).flush({ activities: [activity] });
+    http.match(`${url}/samples`).forEach((request) => request.flush({ id: 7, samples: [] }));
     http.expectOne(`${url}/track`).flush({ id: 7, track: { type: 'LineString', coordinates: [] } });
     harness.detectChanges();
     expect(harness.routeNativeElement!.querySelector('.activity-name')?.textContent).toContain(
@@ -116,6 +119,7 @@ describe('Activity details', () => {
     http
       .expectOne(url)
       .flush({ ...activity, sport, running: sport === 'running', cycling: sport === 'cycling' });
+    http.match(`${url}/samples`).forEach((request) => request.flush({ id: 7, samples: [] }));
     http.expectOne(`${url}/track`).flush({ id: 7, track: { type: 'LineString', coordinates } });
     harness.detectChanges();
     return harness.routeNativeElement!;
@@ -158,6 +162,7 @@ describe('Activity details', () => {
   it('keeps metrics visible if the track request fails', async () => {
     await harness.navigateByUrl('/activities/7');
     http.expectOne(url).flush(activity);
+    http.match(`${url}/samples`).forEach((request) => request.flush({ id: 7, samples: [] }));
     http.expectOne(`${url}/track`).flush({}, { status: 500, statusText: 'Server error' });
     harness.detectChanges();
     expect(harness.routeNativeElement?.textContent).toContain('Morning activity');
@@ -167,6 +172,65 @@ describe('Activity details', () => {
   it('shows an empty map state for a run without a track', async () => {
     const page = await open('running', []);
     expect(page.textContent).toContain('No track data available.');
+  });
+
+  it('loads charts independently of the track and retries sample failures', async () => {
+    await harness.navigateByUrl('/activities/7');
+    http.expectOne(url).flush(activity);
+    http.expectOne(`${url}/samples`).flush({}, { status: 500, statusText: 'Server error' });
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).toContain('Could not load activity samples');
+    expect(harness.routeNativeElement?.textContent).toContain('Morning activity');
+    harness.routeNativeElement!.querySelector<HTMLButtonElement>('.error-box button')!.click();
+    http.expectOne(`${url}/samples`).flush({
+      id: 7,
+      samples: [
+        {
+          timestamp: '2026-10-01T08:00:00Z',
+          distanceMeters: 0,
+          heartRateBpm: 150,
+          paceMinutesPerKilometer: 5.5,
+          altitudeMeters: 68,
+          gradePercent: null,
+          gapMinutesPerKilometer: null,
+        },
+      ],
+    });
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.querySelector('app-activity-charts')).toBeTruthy();
+    expect(harness.routeNativeElement?.textContent).toContain('Loading route');
+    http.expectOne(`${url}/track`).flush({}, { status: 500, statusText: 'Server error' });
+  });
+
+  it('does not request samples for non-running activities', async () => {
+    await open('cycling');
+    http.expectNone(`${url}/samples`);
+    expect(harness.routeNativeElement?.querySelector('app-activity-charts')).toBeNull();
+  });
+
+  it('cancels pending samples when navigating to another activity', async () => {
+    await harness.navigateByUrl('/activities/7');
+    http.expectOne(url).flush(activity);
+    const samplesRequest = http.expectOne(`${url}/samples`);
+    const trackRequest = http.expectOne(`${url}/track`);
+    await harness.navigateByUrl('/activities/8');
+    expect(samplesRequest.cancelled).toBe(true);
+    expect(trackRequest.cancelled).toBe(true);
+    http
+      .expectOne(`${environment.apiBaseUrl}/activities/8`)
+      .flush({}, { status: 404, statusText: 'Not found' });
+  });
+
+  it('handles missing sample data without hiding the activity', async () => {
+    await harness.navigateByUrl('/activities/7');
+    http.expectOne(url).flush(activity);
+    http.expectOne(`${url}/samples`).flush({}, { status: 404, statusText: 'Not found' });
+    http.expectOne(`${url}/track`).flush({ id: 7, track: { type: 'LineString', coordinates: [] } });
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).toContain(
+      'Samples for this activity were not found.',
+    );
+    expect(harness.routeNativeElement?.textContent).toContain('Morning activity');
   });
 
   it('handles invalid IDs without sending requests', async () => {
@@ -188,6 +252,7 @@ describe('Activity details', () => {
       .flush({ activities: [{ ...activity, calories: null }] });
     await harness.navigateByUrl('/activities/7');
     http.expectNone(url);
+    http.match(`${url}/samples`).forEach((request) => request.flush({ id: 7, samples: [] }));
     http.expectOne(`${url}/track`).flush({ id: 7, track: { type: 'LineString', coordinates: [] } });
     harness.detectChanges();
     expect(harness.routeNativeElement?.textContent).toContain('Morning activity');

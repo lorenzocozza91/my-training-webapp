@@ -1,0 +1,120 @@
+:host {
+  display: block;
+  margin-top: 1.5rem;
+}
+h2,
+h3,
+p {
+  margin: 0;
+}
+h2 {
+  font-size: 1.2rem;
+}
+.chart-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.controls [role='group'] {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+button {
+  background: white;
+  color: #333;
+  border: 1px solid #aaa;
+  border-radius: 0.4rem;
+  padding: 0.5rem 0.65rem;
+  cursor: pointer;
+}
+button[aria-pressed='true'] {
+  background: #1565c0;
+  color: white;
+  border-color: #1565c0;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+button:focus-visible,
+svg:focus-visible {
+  outline: 3px solid #1565c0;
+  outline-offset: 3px;
+}
+.hint {
+  font-size: 0.85rem;
+  color: #616161;
+  margin: 0.75rem 0;
+  line-height: 1.5;
+}
+.sample-position {
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+}
+.chart-list {
+  display: grid;
+  gap: 1rem;
+}
+.chart-card {
+  background: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 1rem;
+  flex-wrap: wrap;
+}
+h3 {
+  font-size: 1rem;
+}
+h3 span {
+  font-weight: normal;
+  color: #616161;
+}
+output {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+}
+svg {
+  width: 100%;
+  display: block;
+  touch-action: pan-y;
+}
+text {
+  font-size: 13px;
+  fill: #616161;
+}
+.grid-line {
+  stroke: #e0e0e0;
+}
+.cursor {
+  stroke: #424242;
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+.empty {
+  padding: 2rem 1rem;
+  color: #616161;
+  text-align: center;
+}
+@media (max-width: 30rem) {
+  header {
+    padding: 0.75rem;
+  }
+  text {
+    font-size: 17px;
+  }
+}

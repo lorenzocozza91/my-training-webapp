@@ -50,5 +50,21 @@
         }
       </section>
     }
+    @if (activity.sport === 'running') {
+      @if (samplesLoading()) {
+        <div class="placeholder" role="status">
+          <mat-spinner diameter="32" /><span>Loading activity samples…</span>
+        </div>
+      } @else if (samplesError()) {
+        <div class="error-box" role="alert">
+          <span>{{ samplesError() }}</span>
+          <button mat-button type="button" (click)="retrySamples()">Retry samples</button>
+        </div>
+      } @else if (samples().length) {
+        <app-activity-charts [samples]="samples()" />
+      } @else {
+        <div class="placeholder" role="status">No sample data available.</div>
+      }
+    }
   }
 </section>

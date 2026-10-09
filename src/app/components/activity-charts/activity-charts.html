@@ -1,0 +1,109 @@
+<section aria-labelledby="samples-title">
+  <div class="chart-toolbar">
+    <h2 id="samples-title">Running samples</h2>
+    <div class="controls">
+      <div role="group" aria-label="Chart horizontal axis">
+        <button
+          type="button"
+          [attr.aria-pressed]="axis() === 'distance'"
+          [disabled]="!distanceAvailable()"
+          (click)="setAxis('distance')"
+        >
+          Distance
+        </button>
+        <button type="button" [attr.aria-pressed]="axis() === 'time'" (click)="setAxis('time')">
+          Time (HH:mm)
+        </button>
+      </div>
+      <div role="group" aria-label="Chart zoom">
+        <button type="button" (click)="zoom(0.5)" [disabled]="window()[1] - window()[0] <= 0.01">
+          Zoom in
+        </button>
+        <button type="button" (click)="zoom(2)" [disabled]="window()[1] - window()[0] >= 1">
+          Zoom out
+        </button>
+        <button type="button" (click)="resetZoom()">Reset zoom</button>
+      </div>
+    </div>
+  </div>
+  @if (!distanceAvailable()) {
+    <p>Distance data is unavailable. Charts use time.</p>
+  }
+  <p class="hint">
+    Hover or touch a chart to inspect a sample. Use arrow keys when a chart is focused. Zoom centers
+    on the selected sample. Time is shown in your local timezone.
+  </p>
+  @if (selected(); as point) {
+    <p class="sample-position">
+      Selected sample: {{ sampleTime(point.sample.timestamp) }}
+      @if (point.sample.distanceMeters != null) {
+        · {{ (point.sample.distanceMeters! / 1000).toFixed(2) }} km
+      }
+    </p>
+  }
+  <div class="chart-list">
+    @for (chart of charts(); track chart.key) {
+      <article class="chart-card">
+        <header>
+          <h3>
+            {{ chart.label }} <span>({{ chart.unit }})</span>
+          </h3>
+          @if (selected(); as point) {
+            <output
+              >{{ formatMetric(point.sample[chart.key], chart) }}
+              @if (point.sample[chart.key] != null) {
+                {{ chart.unit }}
+              }
+            </output>
+          }
+        </header>
+        @if (chart.hasData) {
+          <svg
+            viewBox="0 0 800 224"
+            tabindex="0"
+            role="img"
+            [attr.aria-label]="
+              chart.label + ' by ' + axis() + '. Use left and right arrow keys to inspect samples.'
+            "
+            (pointermove)="selectAt($event)"
+            (pointerdown)="selectAt($event)"
+            (keydown)="selectKey($event)"
+          >
+            @for (tick of chart.ticks; track $index) {
+              <line x1="72" x2="776" [attr.y1]="tick.y" [attr.y2]="tick.y" class="grid-line" />
+              <text x="62" [attr.y]="tick.y + 4" text-anchor="end">{{ tick.label }}</text>
+            }
+            @for (tick of xTicks(); track $index) {
+              <text
+                [attr.x]="tick.x"
+                y="210"
+                [attr.text-anchor]="$index === 0 ? 'start' : $index === 4 ? 'end' : 'middle'"
+              >
+                {{ tick.label }}
+              </text>
+            }
+            <path
+              [attr.d]="chart.path"
+              fill="none"
+              [attr.stroke]="chart.color"
+              stroke-width="2"
+              vector-effect="non-scaling-stroke"
+            />
+            @for (dot of chart.dots; track $index) {
+              <circle [attr.cx]="dot.x" [attr.cy]="dot.y" r="2" [attr.fill]="chart.color" />
+            }
+            @if (cursorX() != null) {
+              <line [attr.x1]="cursorX()" [attr.x2]="cursorX()" y1="20" y2="180" class="cursor" />
+            }
+          </svg>
+        } @else {
+          <p class="empty">No {{ chart.label.toLowerCase() }} data available in this range.</p>
+        }
+      </article>
+    }
+  </div>
+  <p class="hint">
+    GAP is an estimated Grade Adjusted Pace and may differ from Garmin GAP. Missing measurements
+    appear as gaps.
+  </p>
+</section>
