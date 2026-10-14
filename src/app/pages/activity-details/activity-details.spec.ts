@@ -73,6 +73,12 @@ describe('Activity details', () => {
 
   afterEach(() => http.verify());
 
+  function flushAggregatedEmpty() {
+    http
+      .match(`${url}/samples-aggregated/aggr-km/1`)
+      .forEach((request) => request.flush({ id: 7, aggregationKilometers: 1, samples: [] }));
+  }
+
   it('opens details from the dashboard while keeping its map toggle independent and restores filters on return', async () => {
     const router = TestBed.inject(Router);
     const dashboardUrl = '/?from=2026-09-01&to=2026-10-01&sport=running';
@@ -80,6 +86,7 @@ describe('Activity details', () => {
     await harness.navigateByUrl(dashboardUrl);
     http.expectOne(listUrl).flush({ activities: [activity] });
     http.match(`${url}/samples`).forEach((request) => request.flush({ id: 7, samples: [] }));
+    flushAggregatedEmpty();
     http.expectOne(`${url}/track`).flush({ id: 7, track: { type: 'LineString', coordinates: [] } });
     harness.detectChanges();
 
@@ -93,6 +100,7 @@ describe('Activity details', () => {
     expect(router.url).toBe('/activities/7?from=2026-09-01&to=2026-10-01&sport=running');
     http.expectNone(url);
     http.match(`${url}/samples`).forEach((request) => request.flush({ id: 7, samples: [] }));
+    flushAggregatedEmpty();
     http.expectOne(`${url}/track`).flush({ id: 7, track: { type: 'LineString', coordinates: [] } });
     harness.detectChanges();
 
@@ -101,6 +109,7 @@ describe('Activity details', () => {
     expect(router.url).toBe(dashboardUrl);
     http.expectOne(listUrl).flush({ activities: [activity] });
     http.match(`${url}/samples`).forEach((request) => request.flush({ id: 7, samples: [] }));
+    flushAggregatedEmpty();
     http.expectOne(`${url}/track`).flush({ id: 7, track: { type: 'LineString', coordinates: [] } });
     harness.detectChanges();
     expect(harness.routeNativeElement!.querySelector('.activity-name')?.textContent).toContain(
@@ -120,6 +129,7 @@ describe('Activity details', () => {
       .expectOne(url)
       .flush({ ...activity, sport, running: sport === 'running', cycling: sport === 'cycling' });
     http.match(`${url}/samples`).forEach((request) => request.flush({ id: 7, samples: [] }));
+    flushAggregatedEmpty();
     http.expectOne(`${url}/track`).flush({ id: 7, track: { type: 'LineString', coordinates } });
     harness.detectChanges();
     return harness.routeNativeElement!;
@@ -162,7 +172,9 @@ describe('Activity details', () => {
   it('keeps metrics visible if the track request fails', async () => {
     await harness.navigateByUrl('/activities/7');
     http.expectOne(url).flush(activity);
+    flushAggregatedEmpty();
     http.match(`${url}/samples`).forEach((request) => request.flush({ id: 7, samples: [] }));
+    flushAggregatedEmpty();
     http.expectOne(`${url}/track`).flush({}, { status: 500, statusText: 'Server error' });
     harness.detectChanges();
     expect(harness.routeNativeElement?.textContent).toContain('Morning activity');
@@ -177,6 +189,7 @@ describe('Activity details', () => {
   it('loads charts independently of the track and retries sample failures', async () => {
     await harness.navigateByUrl('/activities/7');
     http.expectOne(url).flush(activity);
+    flushAggregatedEmpty();
     http.expectOne(`${url}/samples`).flush({}, { status: 500, statusText: 'Server error' });
     harness.detectChanges();
     expect(harness.routeNativeElement?.textContent).toContain('Could not load activity samples');
@@ -205,12 +218,15 @@ describe('Activity details', () => {
   it('does not request samples for non-running activities', async () => {
     await open('cycling');
     http.expectNone(`${url}/samples`);
+    http.expectNone((request) => request.url.includes('samples-aggregated'));
+    expect(harness.routeNativeElement?.querySelector('app-aggregated-activity-charts')).toBeNull();
     expect(harness.routeNativeElement?.querySelector('app-activity-charts')).toBeNull();
   });
 
   it('cancels pending samples when navigating to another activity', async () => {
     await harness.navigateByUrl('/activities/7');
     http.expectOne(url).flush(activity);
+    flushAggregatedEmpty();
     const samplesRequest = http.expectOne(`${url}/samples`);
     const trackRequest = http.expectOne(`${url}/track`);
     await harness.navigateByUrl('/activities/8');
@@ -224,6 +240,7 @@ describe('Activity details', () => {
   it('handles missing sample data without hiding the activity', async () => {
     await harness.navigateByUrl('/activities/7');
     http.expectOne(url).flush(activity);
+    flushAggregatedEmpty();
     http.expectOne(`${url}/samples`).flush({}, { status: 404, statusText: 'Not found' });
     http.expectOne(`${url}/track`).flush({ id: 7, track: { type: 'LineString', coordinates: [] } });
     harness.detectChanges();
@@ -231,6 +248,134 @@ describe('Activity details', () => {
       'Samples for this activity were not found.',
     );
     expect(harness.routeNativeElement?.textContent).toContain('Morning activity');
+  });
+
+  async function startSegments() {
+    await harness.navigateByUrl('/activities/7');
+    http.expectOne(url).flush(activity);
+    http.expectOne(`${url}/samples`).flush({ id: 7, samples: [] });
+    http.expectOne(`${url}/track`).flush({ id: 7, track: { type: 'LineString', coordinates: [] } });
+    harness.detectChanges();
+    return harness.routeNativeElement!;
+  }
+
+  function chooseInterval(page: HTMLElement, interval: string) {
+    Array.from(
+      page.querySelectorAll<HTMLButtonElement>('[aria-label="Aggregation interval"] button'),
+    )
+      .find((button) => button.textContent?.trim() === interval)!
+      .click();
+    harness.detectChanges();
+  }
+
+  it('defaults to 1 km, cancels stale interval requests, and fetches each selection', async () => {
+    const page = await startSegments();
+    expect(
+      page.querySelector('[aria-label="Aggregation interval"] [aria-pressed="true"]')?.textContent,
+    ).toContain('1 km');
+    expect(page.textContent).toContain('Loading running segments');
+    const original = http.expectOne(`${url}/samples-aggregated/aggr-km/1`);
+    chooseInterval(page, '0.5 km');
+    expect(original.cancelled).toBe(true);
+    const half = http.expectOne(`${url}/samples-aggregated/aggr-km/0.5`);
+    chooseInterval(page, '2 km');
+    expect(half.cancelled).toBe(true);
+    http
+      .expectOne(`${url}/samples-aggregated/aggr-km/2`)
+      .flush({ id: 7, aggregationKilometers: 2, samples: [] });
+    harness.detectChanges();
+    expect(page.textContent).toContain('No running segment data available.');
+    expect(page.textContent).not.toContain('Loading running segments');
+    chooseInterval(page, '1 km');
+    http
+      .expectOne(`${url}/samples-aggregated/aggr-km/1`)
+      .flush({ id: 7, aggregationKilometers: 1, samples: [] });
+  });
+
+  it.each([
+    [400, 'This aggregation interval cannot be loaded.'],
+    [404, 'Segments for this activity were not found.'],
+    [500, 'Could not load running segments.'],
+  ])(
+    'handles segment error %s and retries without reloading raw samples',
+    async (status, message) => {
+      const page = await startSegments();
+      http
+        .expectOne(`${url}/samples-aggregated/aggr-km/1`)
+        .flush({}, { status, statusText: 'Error' });
+      harness.detectChanges();
+      expect(page.textContent).toContain(message);
+      expect(page.textContent).toContain('Morning activity');
+      page.querySelector<HTMLButtonElement>('.segments-section .error-box button')!.click();
+      harness.detectChanges();
+      http.expectNone(`${url}/samples`);
+      expect(page.textContent).toContain('Loading running segments');
+      http
+        .expectOne(`${url}/samples-aggregated/aggr-km/1`)
+        .flush({ id: 7, aggregationKilometers: 1, samples: [] });
+      harness.detectChanges();
+      expect(page.textContent).toContain('No running segment data available.');
+    },
+  );
+
+  it('cancels aggregated samples on activity changes and displays only the new activity segments', async () => {
+    await startSegments();
+    const previous = http.expectOne(`${url}/samples-aggregated/aggr-km/1`);
+    await harness.navigateByUrl('/activities/8');
+    expect(previous.cancelled).toBe(true);
+    const nextUrl = `${environment.apiBaseUrl}/activities/8`;
+    http.expectOne(nextUrl).flush({ ...activity, id: 8 });
+    http.expectOne(`${nextUrl}/samples`).flush({ id: 8, samples: [] });
+    http
+      .expectOne(`${nextUrl}/track`)
+      .flush({ id: 8, track: { type: 'LineString', coordinates: [] } });
+    http.expectOne(`${nextUrl}/samples-aggregated/aggr-km/1`).flush({
+      id: 8,
+      aggregationKilometers: 1,
+      samples: [
+        {
+          startedAt: '2026-10-14T08:00:00Z',
+          endedAt: '2026-10-14T08:05:00Z',
+          startDistanceMeters: 5000,
+          endDistanceMeters: 5400,
+          durationSeconds: 300,
+          paceMinutesPerKilometer: 5.5,
+          heartRateBpm: null,
+          altitudeMeters: null,
+          gradePercent: null,
+          gapMinutesPerKilometer: null,
+        },
+      ],
+    });
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.textContent).toContain('5–5.4 km');
+    expect(harness.routeNativeElement?.textContent).toContain('5:30 /km');
+  });
+
+  it('keeps raw charts available when the aggregated request fails', async () => {
+    await harness.navigateByUrl('/activities/7');
+    http.expectOne(url).flush(activity);
+    http.expectOne(`${url}/samples`).flush({
+      id: 7,
+      samples: [
+        {
+          timestamp: '2026-10-14T08:00:00Z',
+          distanceMeters: 0,
+          heartRateBpm: 151,
+          paceMinutesPerKilometer: 5.5,
+          altitudeMeters: null,
+          gradePercent: null,
+          gapMinutesPerKilometer: null,
+        },
+      ],
+    });
+    http
+      .expectOne(`${url}/samples-aggregated/aggr-km/1`)
+      .flush({}, { status: 500, statusText: 'Server error' });
+    http.expectOne(`${url}/track`).flush({ id: 7, track: { type: 'LineString', coordinates: [] } });
+    harness.detectChanges();
+    expect(harness.routeNativeElement?.querySelector('app-activity-charts')).toBeTruthy();
+    expect(harness.routeNativeElement?.textContent).toContain('Could not load running segments.');
   });
 
   it('handles invalid IDs without sending requests', async () => {
@@ -253,6 +398,7 @@ describe('Activity details', () => {
     await harness.navigateByUrl('/activities/7');
     http.expectNone(url);
     http.match(`${url}/samples`).forEach((request) => request.flush({ id: 7, samples: [] }));
+    flushAggregatedEmpty();
     http.expectOne(`${url}/track`).flush({ id: 7, track: { type: 'LineString', coordinates: [] } });
     harness.detectChanges();
     expect(harness.routeNativeElement?.textContent).toContain('Morning activity');

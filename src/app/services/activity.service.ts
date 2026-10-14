@@ -1,11 +1,12 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map, of, tap } from 'rxjs';
+import { Observable, map, of, tap, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   Activity,
   ActivitiesResponse,
   ActivitySamplesResponse,
+  AggregatedActivitySamplesResponse,
   TrackResponse,
 } from '../models/activity';
 
@@ -44,6 +45,18 @@ export class ActivityService {
   getActivitySamples(id: number): Observable<ActivitySamplesResponse> {
     return this.http.get<ActivitySamplesResponse>(
       `${environment.apiBaseUrl}/activities/${id}/samples`,
+    );
+  }
+
+  getAggregatedActivitySamples(
+    id: number,
+    kilometers: number,
+  ): Observable<AggregatedActivitySamplesResponse> {
+    if (!Number.isFinite(kilometers) || kilometers <= 0) {
+      return throwError(() => new Error('Aggregation interval must be positive and finite.'));
+    }
+    return this.http.get<AggregatedActivitySamplesResponse>(
+      `${environment.apiBaseUrl}/activities/${id}/samples-aggregated/aggr-km/${kilometers}`,
     );
   }
 }

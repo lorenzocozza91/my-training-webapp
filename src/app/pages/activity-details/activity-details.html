@@ -50,7 +50,38 @@
         }
       </section>
     }
-    @if (activity.sport === 'running') {
+    @if (kind() === 'running') {
+      <section class="segments-section" aria-labelledby="segments-title">
+        <div class="segments-toolbar">
+          <h2 id="segments-title">Running segments</h2>
+          <div role="group" aria-label="Aggregation interval">
+            @for (interval of aggregationIntervals; track interval) {
+              <button
+                mat-button
+                type="button"
+                [attr.aria-pressed]="aggregationKilometers() === interval"
+                (click)="selectAggregation(interval)"
+              >
+                {{ interval }} km
+              </button>
+            }
+          </div>
+        </div>
+        @if (aggregatedLoading()) {
+          <div class="placeholder" role="status">
+            <mat-spinner diameter="32" /><span>Loading running segments…</span>
+          </div>
+        } @else if (aggregatedError()) {
+          <div class="error-box" role="alert">
+            <span>{{ aggregatedError() }}</span>
+            <button mat-button type="button" (click)="retryAggregation()">Retry segments</button>
+          </div>
+        } @else if (aggregatedSamples().length) {
+          <app-aggregated-activity-charts [samples]="aggregatedSamples()" />
+        } @else {
+          <div class="placeholder" role="status">No running segment data available.</div>
+        }
+      </section>
       @if (samplesLoading()) {
         <div class="placeholder" role="status">
           <mat-spinner diameter="32" /><span>Loading activity samples…</span>

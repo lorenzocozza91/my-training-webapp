@@ -42,6 +42,25 @@ export interface ActivitySamplesResponse {
   samples: ActivitySample[];
 }
 
+export interface AggregatedActivitySample {
+  startedAt: string;
+  endedAt: string;
+  startDistanceMeters: number;
+  endDistanceMeters: number;
+  durationSeconds: number;
+  heartRateBpm: number | null;
+  paceMinutesPerKilometer: number;
+  altitudeMeters: number | null;
+  gradePercent: number | null;
+  gapMinutesPerKilometer: number | null;
+}
+
+export interface AggregatedActivitySamplesResponse {
+  id: number;
+  aggregationKilometers: number;
+  samples: AggregatedActivitySample[];
+}
+
 export interface TrackResponse {
   id: number;
   track: {

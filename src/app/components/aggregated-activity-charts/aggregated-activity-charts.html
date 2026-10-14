@@ -1,0 +1,110 @@
+<p class="hint">
+  Pace uses elapsed time, including pauses. Missing measurements appear as gaps. Each metric uses
+  its own vertical scale.
+</p>
+<article class="chart-card">
+  <header>
+    <h3>Running segments by distance</h3>
+    <div class="legend">
+      @for (chart of charts(); track chart.key) {
+        <span [style.color]="chart.color"
+          >{{ chart.label }} ({{ chart.unit }}) · {{ $first ? 'bars' : 'line' }}</span
+        >
+      }
+    </div>
+  </header>
+  <svg
+    viewBox="0 0 960 224"
+    role="img"
+    aria-label="Pace histogram with smooth heart rate and altitude lines by distance. Each metric has its own vertical scale. Segment values are listed in the table below."
+  >
+    @for (chart of charts(); track chart.key) {
+      @for (tick of chart.ticks; track $index) {
+        @if (chart.key === 'paceMinutesPerKilometer') {
+          <line x1="72" x2="776" [attr.y1]="tick.y" [attr.y2]="tick.y" class="grid-line" />
+        }
+        <text
+          [attr.x]="
+            chart.key === 'paceMinutesPerKilometer' ? 62 : chart.key === 'heartRateBpm' ? 790 : 878
+          "
+          [attr.y]="tick.y + 4"
+          [attr.text-anchor]="chart.key === 'paceMinutesPerKilometer' ? 'end' : 'start'"
+          [style.fill]="chart.color"
+        >
+          {{ tick.label }}{{ chart.key === 'paceMinutesPerKilometer' ? '' : ' ' + chart.unit }}
+        </text>
+      }
+      @for (bar of chart.rectangles; track $index) {
+        <rect
+          [attr.x]="bar.x"
+          [attr.y]="bar.y"
+          [attr.width]="bar.width"
+          [attr.height]="bar.height"
+          [attr.fill]="chart.color"
+          fill-opacity="0.45"
+          stroke="white"
+          stroke-width="1"
+        >
+          <title>{{ bar.label }}</title>
+        </rect>
+      }
+      @if (chart.path) {
+        <path
+          [attr.d]="chart.path"
+          fill="none"
+          [attr.stroke]="chart.color"
+          stroke-width="2"
+          vector-effect="non-scaling-stroke"
+        />
+      }
+      @for (point of chart.points; track $index) {
+        <circle [attr.cx]="point.x" [attr.cy]="point.y" r="2" [attr.fill]="chart.color" />
+      }
+    }
+    @for (tick of xTicks(); track $index) {
+      <text
+        [attr.x]="tick.x"
+        y="210"
+        [attr.text-anchor]="$index === 0 ? 'start' : $index === 4 ? 'end' : 'middle'"
+      >
+        {{ tick.label }}
+      </text>
+    }
+  </svg>
+  @for (chart of charts(); track chart.key) {
+    @if (!chart.hasData) {
+      <p class="empty">No {{ chart.label.toLowerCase() }} data available.</p>
+    }
+  }
+</article>
+<div class="table-container" tabindex="0" role="region" aria-label="Running segment measurements">
+  <table>
+    <caption>
+      Running segment measurements
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">Distance range</th>
+        <th scope="col">Duration</th>
+        <th scope="col">Pace</th>
+        <th scope="col">Heart rate</th>
+        <th scope="col">Altitude</th>
+        <th scope="col">Grade</th>
+        <th scope="col">GAP</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (sample of samples(); track $index) {
+        <tr>
+          <th scope="row">{{ range(sample) }}</th>
+          <td>{{ formatDuration(sample.durationSeconds) }}</td>
+          <td>{{ formatPace(sample.paceMinutesPerKilometer) }}</td>
+          <td>{{ number(sample.heartRateBpm, 'bpm') }}</td>
+          <td>{{ number(sample.altitudeMeters, 'm') }}</td>
+          <td>{{ number(sample.gradePercent, '%') }}</td>
+          <td>{{ formatPace(sample.gapMinutesPerKilometer) }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

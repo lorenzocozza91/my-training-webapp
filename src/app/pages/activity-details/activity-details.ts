@@ -3,12 +3,13 @@ import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject, catchError, merge, of, startWith, switchMap, tap } from 'rxjs';
+import { BehaviorSubject, Subject, catchError, merge, of, startWith, switchMap, tap } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Activity, ActivitySample } from '../../models/activity';
+import { Activity, ActivitySample, AggregatedActivitySample } from '../../models/activity';
 import { ActivityChartsComponent } from '../../components/activity-charts/activity-charts';
+import { AggregatedActivityChartsComponent } from '../../components/aggregated-activity-charts/aggregated-activity-charts';
 import { getSportMeta } from '../../models/sport';
 import { ActivityService } from '../../services/activity.service';
 import { TrackMapComponent } from '../../components/track-map/track-map';
@@ -37,6 +38,7 @@ interface Metric {
     MatProgressSpinnerModule,
     TrackMapComponent,
     ActivityChartsComponent,
+    AggregatedActivityChartsComponent,
   ],
   templateUrl: './activity-details.html',
   styleUrl: './activity-details.css',
@@ -55,6 +57,23 @@ export class ActivityDetailsComponent {
   protected readonly samplesLoading = signal(false);
   protected readonly samplesError = signal<string | null>(null);
   private readonly samplesRetry = new Subject<void>();
+
+  protected readonly aggregationIntervals = [0.5, 1, 2];
+  protected readonly aggregationKilometers = signal(1);
+  protected readonly aggregatedSamples = signal<AggregatedActivitySample[]>([]);
+  protected readonly aggregatedLoading = signal(false);
+  protected readonly aggregatedError = signal<string | null>(null);
+  private readonly aggregationRequests = new BehaviorSubject<number>(1);
+
+  protected selectAggregation(kilometers: number): void {
+    if (!this.aggregationIntervals.includes(kilometers)) return;
+    this.aggregationKilometers.set(kilometers);
+    this.aggregationRequests.next(kilometers);
+  }
+
+  protected retryAggregation(): void {
+    this.aggregationRequests.next(this.aggregationKilometers());
+  }
 
   protected retrySamples(): void {
     this.samplesRetry.next();
@@ -119,6 +138,9 @@ export class ActivityDetailsComponent {
           this.coordinates.set([]);
           this.trackLoading.set(false);
           this.trackError.set(false);
+          this.aggregatedSamples.set([]);
+          this.aggregatedLoading.set(false);
+          this.aggregatedError.set(null);
           this.samples.set([]);
           this.samplesLoading.set(false);
           this.samplesError.set(null);
@@ -139,7 +161,7 @@ export class ActivityDetailsComponent {
             }),
             switchMap((activity) =>
               merge(
-                activity.sport === 'running'
+                activity.sport === 'running' || activity.running
                   ? this.samplesRetry.pipe(
                       startWith(undefined),
                       tap(() => {
@@ -159,6 +181,34 @@ export class ActivityDetailsComponent {
                                 : 'Could not load activity samples. Please try again.',
                             );
                             this.samplesLoading.set(false);
+                            return of(null);
+                          }),
+                        ),
+                      ),
+                    )
+                  : of(null),
+                activity.sport === 'running' || activity.running
+                  ? this.aggregationRequests.pipe(
+                      tap(() => {
+                        this.aggregatedSamples.set([]);
+                        this.aggregatedLoading.set(true);
+                        this.aggregatedError.set(null);
+                      }),
+                      switchMap((kilometers) =>
+                        this.service.getAggregatedActivitySamples(id, kilometers).pipe(
+                          tap((response) => {
+                            this.aggregatedSamples.set(response.samples);
+                            this.aggregatedLoading.set(false);
+                          }),
+                          catchError((error: HttpErrorResponse) => {
+                            this.aggregatedError.set(
+                              error.status === 404
+                                ? 'Segments for this activity were not found.'
+                                : error.status === 400
+                                  ? 'This aggregation interval cannot be loaded. Try a larger interval.'
+                                  : 'Could not load running segments. Please try again.',
+                            );
+                            this.aggregatedLoading.set(false);
                             return of(null);
                           }),
                         ),

@@ -35,6 +35,12 @@ export function formatPace(metersPerSecond: number | null | undefined): string {
   return `${m}:${String(s).padStart(2, '0')} /km`;
 }
 
+export function formatMinutesPerKilometer(minutes: number | null | undefined): string {
+  if (minutes == null || !Number.isFinite(minutes) || minutes < 0) return '—';
+  const seconds = Math.round(minutes * 60);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')} /km`;
+}
+
 export function formatElevation(meters: number | null | undefined): string {
   if (meters == null) return '—';
   return `${Math.round(meters)} m`;
