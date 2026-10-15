@@ -1,14 +1,26 @@
 <p class="hint">
-  Pace uses elapsed time, including pauses. Missing measurements appear as gaps. Each metric uses
-  its own vertical scale.
+  Pace uses elapsed time, including pauses. GAP is grade-adjusted pace. Pace and GAP bars share a
+  vertical scale starting 10% below their minimum value. Heart rate and altitude each use their own
+  scale. Missing measurements appear as gaps.
 </p>
 <article class="chart-card">
   <header>
     <h3>Running segments by distance</h3>
+    <label class="gap-switch">
+      <input
+        #gapToggle
+        type="checkbox"
+        role="switch"
+        [checked]="showGap()"
+        (change)="showGap.set(gapToggle.checked)"
+      />
+      <span class="switch-track" aria-hidden="true"></span>
+      GAP
+    </label>
     <div class="legend">
       @for (chart of charts(); track chart.key) {
         <span [style.color]="chart.color"
-          >{{ chart.label }} ({{ chart.unit }}) · {{ $first ? 'bars' : 'line' }}</span
+          >{{ chart.label }} ({{ chart.unit }}) · {{ chart.bars ? 'bars' : 'line' }}</span
         >
       }
     </div>
@@ -16,7 +28,11 @@
   <svg
     viewBox="0 0 960 224"
     role="img"
-    aria-label="Pace histogram with smooth heart rate and altitude lines by distance. Each metric has its own vertical scale. Segment values are listed in the table below."
+    [attr.aria-label]="
+      showGap()
+        ? 'Pace and grade-adjusted pace histograms side by side on a shared scale, with smooth heart rate and altitude lines by distance on separate scales. Segment values are listed in the table below.'
+        : 'Pace histogram with smooth heart rate and altitude lines by distance on separate scales. Segment values are listed in the table below.'
+    "
   >
     @for (chart of charts(); track chart.key) {
       @for (tick of chart.ticks; track $index) {
@@ -36,17 +52,26 @@
       }
       @for (bar of chart.rectangles; track $index) {
         <rect
+          class="segment-bar"
           [attr.x]="bar.x"
           [attr.y]="bar.y"
           [attr.width]="bar.width"
           [attr.height]="bar.height"
           [attr.fill]="chart.color"
           fill-opacity="0.45"
-          stroke="white"
-          stroke-width="1"
         >
           <title>{{ bar.label }}</title>
         </rect>
+        <line
+          [attr.x1]="chart.key === 'paceMinutesPerKilometer' ? bar.x : bar.x + bar.width"
+          [attr.x2]="chart.key === 'paceMinutesPerKilometer' ? bar.x : bar.x + bar.width"
+          [attr.y1]="bar.y"
+          y2="180"
+          stroke="white"
+          stroke-width="1"
+          pointer-events="none"
+          aria-hidden="true"
+        />
       }
       @if (chart.path) {
         <path

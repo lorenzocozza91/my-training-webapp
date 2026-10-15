@@ -1,6 +1,64 @@
 :host {
   margin-top: 0;
 }
+header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+header h3 {
+  grid-column: 1 / -1;
+}
+header .legend {
+  grid-column: 1;
+  grid-row: 2;
+}
+.gap-switch {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.gap-switch input {
+  position: absolute;
+  width: 2.75rem;
+  height: 1.5rem;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.switch-track {
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: 1rem;
+  background: #757575;
+  pointer-events: none;
+}
+.switch-track::before {
+  content: '';
+  display: block;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0.1875rem;
+  border-radius: 50%;
+  background: white;
+}
+.gap-switch input:checked + .switch-track {
+  background: #8e24aa;
+}
+.gap-switch input:checked + .switch-track::before {
+  transform: translateX(1.25rem);
+}
+.gap-switch input:focus-visible + .switch-track {
+  outline: 3px solid #1565c0;
+  outline-offset: 3px;
+}
 .table-container {
   overflow-x: auto;
   margin-top: 1rem;

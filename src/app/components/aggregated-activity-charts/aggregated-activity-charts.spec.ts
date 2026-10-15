@@ -30,7 +30,7 @@ describe('Aggregated activity charts', () => {
 
   it('uses actual distance ranges and bar widths for a late start and partial final segment', () => {
     const page = setup([segment(200, 1000), segment(1000, 2000), segment(2000, 2400)]);
-    const bars = page.querySelectorAll('rect');
+    const bars = page.querySelectorAll('rect.segment-bar');
     expect(bars).toHaveLength(3);
     expect(Number(bars[0].getAttribute('x'))).toBe(72);
     expect(
@@ -48,8 +48,44 @@ describe('Aggregated activity charts', () => {
     );
     const page = setup(samples);
     expect(page.querySelectorAll('tbody tr')).toHaveLength(6);
-    expect(page.querySelectorAll('rect')).toHaveLength(6);
+    expect(page.querySelectorAll('rect.segment-bar')).toHaveLength(6);
     expect(page.querySelector('tbody tr:last-child')?.textContent).toContain('5–5.4 km');
+  });
+
+  it('places GAP beside pace on a shared scale and includes all measurements in tooltips', () => {
+    const fixture = TestBed.createComponent(AggregatedActivityChartsComponent);
+    fixture.componentRef.setInput('samples', [
+      segment(0, 1000, { paceMinutesPerKilometer: 5, gapMinutesPerKilometer: 4 }),
+      segment(1000, 2000, { paceMinutesPerKilometer: 4, gapMinutesPerKilometer: null }),
+    ]);
+    fixture.detectChanges();
+    const page = fixture.nativeElement as HTMLElement;
+    const toggle = page.querySelector<HTMLInputElement>('input[role="switch"]')!;
+    expect(toggle.checked).toBe(false);
+    expect(page.querySelectorAll('rect.segment-bar')).toHaveLength(2);
+    const fullWidth = Number(page.querySelector('rect.segment-bar')?.getAttribute('width'));
+    toggle.click();
+    fixture.detectChanges();
+    expect(toggle.checked).toBe(true);
+    const bars = page.querySelectorAll('rect.segment-bar');
+    expect(bars).toHaveLength(3);
+    expect(Number(bars[0].getAttribute('width'))).toBe(fullWidth / 2);
+    expect(Number(bars[2].getAttribute('x'))).toBe(
+      Number(bars[0].getAttribute('x')) + Number(bars[0].getAttribute('width')),
+    );
+    expect(bars[2].getAttribute('y')).toBe(bars[1].getAttribute('y'));
+    expect(bars[2].getAttribute('fill')).not.toBe(bars[0].getAttribute('fill'));
+    expect(page.querySelector('svg text')?.textContent?.trim()).toBe('3:36 /km');
+    expect(bars[2].textContent).toContain('Pace: 5:00 /km');
+    expect(bars[2].textContent).toContain('GAP: 4:00 /km');
+    expect(bars[2].textContent).toContain('Heart rate: 151.5 bpm');
+    expect(bars[2].textContent).toContain('Altitude: 312.4 m');
+    expect(bars[1].textContent).toContain('GAP: —');
+    toggle.click();
+    fixture.detectChanges();
+    expect(toggle.checked).toBe(false);
+    expect(page.querySelectorAll('rect.segment-bar')).toHaveLength(2);
+    expect(Number(page.querySelector('rect.segment-bar')?.getAttribute('width'))).toBe(fullWidth);
   });
 
   it('formats server values and decimal pace without deriving pace from duration', () => {
@@ -90,7 +126,7 @@ describe('Aggregated activity charts', () => {
 
   it('shows empty nullable charts and supports a single segment', () => {
     const page = setup([segment(5000, 5400, { heartRateBpm: null, altitudeMeters: null })]);
-    expect(page.querySelectorAll('rect')).toHaveLength(1);
+    expect(page.querySelectorAll('rect.segment-bar')).toHaveLength(1);
     expect(page.textContent).toContain('No heart rate data available.');
     expect(page.textContent).toContain('No altitude data available.');
     expect(page.textContent).not.toContain('NaN');

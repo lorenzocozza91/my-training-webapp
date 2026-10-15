@@ -1,9 +1,10 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, signal } from '@angular/core';
 import { AggregatedActivitySample } from '../../models/activity';
 import { formatDuration, formatMinutesPerKilometer } from '../../utils/format';
 
 const METRICS = [
   { key: 'paceMinutesPerKilometer', label: 'Pace', unit: '/km', color: '#1565c0' },
+  { key: 'gapMinutesPerKilometer', label: 'GAP', unit: '/km', color: '#8e24aa' },
   { key: 'heartRateBpm', label: 'Heart rate', unit: 'bpm', color: '#c62828' },
   { key: 'altitudeMeters', label: 'Altitude', unit: 'm', color: '#387038' },
 ] as const;
@@ -15,6 +16,7 @@ const METRICS = [
 })
 export class AggregatedActivityChartsComponent {
   readonly samples = input.required<AggregatedActivitySample[]>();
+  protected readonly showGap = signal(false);
   protected readonly formatDuration = formatDuration;
   protected readonly formatPace = formatMinutesPerKilometer;
   protected number(value: number | null, unit: string): string {
@@ -44,77 +46,100 @@ export class AggregatedActivityChartsComponent {
     }));
   });
   protected readonly charts = computed(() =>
-    METRICS.map((metric) => {
-      const values = this.samples()
-        .map((s) => s[metric.key])
-        .filter((v): v is number => v != null && Number.isFinite(v));
-      let min = Infinity,
-        max = -Infinity;
-      for (const value of values) {
-        min = Math.min(min, value);
-        max = Math.max(max, value);
-      }
-      const bars = metric.key === 'paceMinutesPerKilometer';
-      if (bars) min = 0;
-      const padding = max === min ? Math.max(Math.abs(min) * 0.05, 1) : (max - min) * 0.08;
-      if (!bars) min -= padding;
-      max += padding;
-      const y = (value: number) => 20 + ((max - value) / (max - min)) * 160;
-      const points: { x: number; y: number }[] = [];
-      const rectangles: { x: number; y: number; width: number; height: number; label: string }[] =
-        [];
-      let path = '',
-        previous: { x: number; y: number } | null = null,
-        previousEnd: number | null = null;
-      for (const sample of this.samples()) {
-        const value = sample[metric.key];
-        if (value == null || !Number.isFinite(value)) {
-          previous = null;
-          previousEnd = null;
-          continue;
+    METRICS.filter((metric) => this.showGap() || metric.key !== 'gapMinutesPerKilometer').map(
+      (metric) => {
+        const bars =
+          metric.key === 'paceMinutesPerKilometer' || metric.key === 'gapMinutesPerKilometer';
+        const values = this.samples()
+          .map((s) => s[metric.key])
+          .filter((v): v is number => v != null && Number.isFinite(v));
+        // Pace and GAP share a scale so their bar heights can be compared directly.
+        const scaleValues = bars
+          ? this.samples()
+              .flatMap((s) =>
+                this.showGap()
+                  ? [s.paceMinutesPerKilometer, s.gapMinutesPerKilometer]
+                  : [s.paceMinutesPerKilometer],
+              )
+              .filter((v): v is number => v != null && Number.isFinite(v))
+          : values;
+        let min = Infinity,
+          max = -Infinity;
+        for (const value of scaleValues) {
+          min = Math.min(min, value);
+          max = Math.max(max, value);
         }
-        const point = {
-          x: this.screenX((sample.startDistanceMeters + sample.endDistanceMeters) / 2),
-          y: y(value),
-        };
-        if (bars) {
-          rectangles.push({
-            x: this.screenX(sample.startDistanceMeters),
-            y: point.y,
-            width:
-              this.screenX(sample.endDistanceMeters) - this.screenX(sample.startDistanceMeters),
-            height: 180 - point.y,
-            label: `${this.range(sample)}: ${formatMinutesPerKilometer(value)}`,
-          });
-        } else {
-          // Horizontal tangents create smooth, bounded curves without overshooting server values.
-          if (previous && previousEnd === sample.startDistanceMeters) {
-            const middle = (previous.x + point.x) / 2;
-            path += `C${middle},${previous.y} ${middle},${point.y} ${point.x},${point.y} `;
-          } else {
-            path += `M${point.x},${point.y} `;
+        if (bars) min *= 0.9;
+        const padding = max === min ? Math.max(Math.abs(min) * 0.05, 1) : (max - min) * 0.08;
+        if (!bars) min -= padding;
+        max += padding;
+        const y = (value: number) => 20 + ((max - value) / (max - min)) * 160;
+        const points: { x: number; y: number }[] = [];
+        const rectangles: { x: number; y: number; width: number; height: number; label: string }[] =
+          [];
+        let path = '',
+          previous: { x: number; y: number } | null = null,
+          previousEnd: number | null = null;
+        for (const sample of this.samples()) {
+          const value = sample[metric.key];
+          if (value == null || !Number.isFinite(value)) {
+            previous = null;
+            previousEnd = null;
+            continue;
           }
-          points.push(point);
-          previous = point;
-          previousEnd = sample.endDistanceMeters;
+          const point = {
+            x: this.screenX((sample.startDistanceMeters + sample.endDistanceMeters) / 2),
+            y: y(value),
+          };
+          if (bars) {
+            const startX = this.screenX(sample.startDistanceMeters);
+            const width =
+              (this.screenX(sample.endDistanceMeters) - startX) / (this.showGap() ? 2 : 1);
+            rectangles.push({
+              x: startX + (metric.key === 'gapMinutesPerKilometer' ? width : 0),
+              y: point.y,
+              width,
+              height: 180 - point.y,
+              label: [
+                this.range(sample),
+                `Pace: ${formatMinutesPerKilometer(sample.paceMinutesPerKilometer)}`,
+                `GAP: ${formatMinutesPerKilometer(sample.gapMinutesPerKilometer)}`,
+                `Heart rate: ${this.number(sample.heartRateBpm, 'bpm')}`,
+                `Altitude: ${this.number(sample.altitudeMeters, 'm')}`,
+              ].join('\n'),
+            });
+          } else {
+            // Horizontal tangents create smooth, bounded curves without overshooting server values.
+            if (previous && previousEnd === sample.startDistanceMeters) {
+              const middle = (previous.x + point.x) / 2;
+              path += `C${middle},${previous.y} ${middle},${point.y} ${point.x},${point.y} `;
+            } else {
+              path += `M${point.x},${point.y} `;
+            }
+            points.push(point);
+            previous = point;
+            previousEnd = sample.endDistanceMeters;
+          }
         }
-      }
-      return {
-        ...metric,
-        hasData: values.length > 0,
-        path,
-        points,
-        rectangles,
-        ticks: values.length
-          ? Array.from({ length: 4 }, (_, i) => {
-              const value = min + ((max - min) * i) / 3;
-              return {
-                y: y(value),
-                label: bars ? formatMinutesPerKilometer(value) : value.toFixed(1),
-              };
-            })
-          : [],
-      };
-    }),
+        return {
+          ...metric,
+          bars,
+          hasData: values.length > 0,
+          path,
+          points,
+          rectangles,
+          ticks:
+            scaleValues.length && metric.key !== 'gapMinutesPerKilometer'
+              ? Array.from({ length: 4 }, (_, i) => {
+                  const value = min + ((max - min) * i) / 3;
+                  return {
+                    y: y(value),
+                    label: bars ? formatMinutesPerKilometer(value) : value.toFixed(1),
+                  };
+                })
+              : [],
+        };
+      },
+    ),
   );
 }
