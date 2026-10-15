@@ -5,6 +5,7 @@ import { HeatmapComponent } from './pages/heatmap/heatmap';
 export const routes: Routes = [
   { path: '', pathMatch: 'full', component: HomeComponent },
   { path: 'heatmap', component: HeatmapComponent },
+  { path: 'calendar', loadComponent: () => import('./pages/calendar/calendar').then((m) => m.CalendarComponent) },
   { path: 'activities/:id', loadComponent: () => import('./pages/activity-details/activity-details').then((m) => m.ActivityDetailsComponent) },
   { path: '**', redirectTo: '' }
 ];

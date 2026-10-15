@@ -1,0 +1,86 @@
+<section class="calendar-page" aria-labelledby="calendar-title">
+  <header class="calendar-header">
+    <div>
+      <h1 id="calendar-title">Calendar</h1>
+      <p>Your past activities, month by month.</p>
+    </div>
+    <nav class="month-controls" aria-label="Calendar month">
+      <button mat-icon-button aria-label="Previous month" (click)="changeMonth(-1)">
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <h2 aria-live="polite">{{ month() | date: 'MMMM yyyy' }}</h2>
+      <button
+        mat-icon-button
+        aria-label="Next month"
+        [disabled]="isCurrentMonth()"
+        (click)="changeMonth(1)"
+      >
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+      <button mat-stroked-button (click)="currentMonth()">This month</button>
+    </nav>
+  </header>
+
+  <div class="sport-legend" aria-label="Activity colours">
+    @for (meta of sports(); track meta.sport) {
+      <span><i [style.background]="meta.color" aria-hidden="true"></i>{{ meta.label }}</span>
+    }
+  </div>
+
+  @if (loading()) {
+    <p role="status" class="status">Loading activities…</p>
+  } @else if (error()) {
+    <div role="alert" class="status error">
+      Could not load activities.
+      <button mat-button (click)="reload()">Try again</button>
+    </div>
+  } @else if (!activities().length) {
+    <p role="status" class="status">No past activities in these weeks.</p>
+  }
+
+  <div class="calendar-scroll" role="region" aria-label="Monthly activity calendar" tabindex="0">
+    <div class="calendar-grid" [attr.aria-busy]="loading()">
+      @for (weekday of weekdays; track weekday) {
+        <div class="weekday">{{ weekday }}</div>
+      }
+      <div class="weekday">Summary</div>
+      @for (week of weeks(); track week.key) {
+        @for (day of week.days; track day.key) {
+          <section
+            class="day"
+            [class.outside-month]="!day.inMonth"
+            [class.today]="day.key === todayKey"
+            [attr.aria-label]="day.date | date: 'EEEE, d MMMM yyyy'"
+          >
+            <time
+              [attr.datetime]="day.key"
+              [attr.aria-current]="day.key === todayKey ? 'date' : null"
+            >
+              {{ day.date | date: 'd' }}
+            </time>
+            @for (activity of day.activities; track activity.id) {
+              <a
+                class="calendar-activity"
+                [routerLink]="['/activities', activity.id]"
+                [style.border-left-color]="sportMeta(activity.sport).color"
+                [title]="activityTitle(activity) + ' · ' + activity.name"
+              >
+                {{ activityTitle(activity) }}
+              </a>
+            }
+          </section>
+        }
+        <section class="summary" [attr.aria-label]="'Training week starting ' + week.key">
+          <dl>
+            @for (metric of week.summary; track metric.label) {
+              <div>
+                <dt>{{ metric.label }}</dt>
+                <dd>{{ loading() || error() ? '—' : metric.value }}</dd>
+              </div>
+            }
+          </dl>
+        </section>
+      }
+    </div>
+  </div>
+</section>
