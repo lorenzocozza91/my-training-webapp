@@ -17,6 +17,8 @@ const METRICS = [
 export class AggregatedActivityChartsComponent {
   readonly samples = input.required<AggregatedActivitySample[]>();
   protected readonly showGap = signal(false);
+  protected readonly fastestPaceColor = '#0d47a1';
+  protected readonly slowestPaceColor = '#90caf9';
   protected readonly formatDuration = formatDuration;
   protected readonly formatPace = formatMinutesPerKilometer;
   protected number(value: number | null, unit: string): string {
@@ -53,6 +55,8 @@ export class AggregatedActivityChartsComponent {
         const values = this.samples()
           .map((s) => s[metric.key])
           .filter((v): v is number => v != null && Number.isFinite(v));
+        const fastestPace = Math.min(...values);
+        const slowestPace = Math.max(...values);
         // Pace and GAP share a scale so their bar heights can be compared directly.
         const scaleValues = bars
           ? this.samples()
@@ -69,14 +73,22 @@ export class AggregatedActivityChartsComponent {
           min = Math.min(min, value);
           max = Math.max(max, value);
         }
-        if (bars) min *= 0.9;
         const padding = max === min ? Math.max(Math.abs(min) * 0.05, 1) : (max - min) * 0.08;
-        if (!bars) min -= padding;
-        max += padding;
-        const y = (value: number) => 20 + ((max - value) / (max - min)) * 160;
+        min -= padding;
+        // Pace increases downward: the baseline is 10% slower than the slowest visible pace.
+        max = bars ? max * 1.1 : max + padding;
+        const y = (value: number) =>
+          20 + ((bars ? value - min : max - value) / (max - min)) * 160;
         const points: { x: number; y: number }[] = [];
-        const rectangles: { x: number; y: number; width: number; height: number; label: string }[] =
-          [];
+        const rectangles: {
+          x: number;
+          y: number;
+          width: number;
+          height: number;
+          label: string;
+          color: string;
+          opacity: number;
+        }[] = [];
         let path = '',
           previous: { x: number; y: number } | null = null,
           previousEnd: number | null = null;
@@ -92,6 +104,14 @@ export class AggregatedActivityChartsComponent {
             y: y(value),
           };
           if (bars) {
+            const highlight =
+              metric.key === 'paceMinutesPerKilometer' && fastestPace < slowestPace
+                ? value === fastestPace
+                  ? 'Fastest pace'
+                  : value === slowestPace
+                    ? 'Slowest pace'
+                    : ''
+                : '';
             const startX = this.screenX(sample.startDistanceMeters);
             const width =
               (this.screenX(sample.endDistanceMeters) - startX) / (this.showGap() ? 2 : 1);
@@ -100,7 +120,15 @@ export class AggregatedActivityChartsComponent {
               y: point.y,
               width,
               height: 180 - point.y,
+              color:
+                highlight === 'Fastest pace'
+                  ? this.fastestPaceColor
+                  : highlight === 'Slowest pace'
+                    ? this.slowestPaceColor
+                    : metric.color,
+              opacity: highlight ? 1 : 0.45,
               label: [
+                ...(highlight ? [highlight] : []),
                 this.range(sample),
                 `Pace: ${formatMinutesPerKilometer(sample.paceMinutesPerKilometer)}`,
                 `GAP: ${formatMinutesPerKilometer(sample.gapMinutesPerKilometer)}`,

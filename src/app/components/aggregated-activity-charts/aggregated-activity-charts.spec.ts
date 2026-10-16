@@ -75,7 +75,7 @@ describe('Aggregated activity charts', () => {
     );
     expect(bars[2].getAttribute('y')).toBe(bars[1].getAttribute('y'));
     expect(bars[2].getAttribute('fill')).not.toBe(bars[0].getAttribute('fill'));
-    expect(page.querySelector('svg text')?.textContent?.trim()).toBe('3:36 /km');
+    expect(page.querySelector('svg text')?.textContent?.trim()).toBe('3:55 /km');
     expect(bars[2].textContent).toContain('Pace: 5:00 /km');
     expect(bars[2].textContent).toContain('GAP: 4:00 /km');
     expect(bars[2].textContent).toContain('Heart rate: 151.5 bpm');
@@ -86,6 +86,25 @@ describe('Aggregated activity charts', () => {
     expect(toggle.checked).toBe(false);
     expect(page.querySelectorAll('rect.segment-bar')).toHaveLength(2);
     expect(Number(page.querySelector('rect.segment-bar')?.getAttribute('width'))).toBe(fullWidth);
+  });
+
+  it('places faster pace higher with a baseline 10% slower than the slowest visible pace', () => {
+    const page = setup([
+      segment(0, 1000, { paceMinutesPerKilometer: 6, gapMinutesPerKilometer: 10 }),
+      segment(1000, 2000, { paceMinutesPerKilometer: 4 }),
+    ]);
+    const bars = page.querySelectorAll('rect.segment-bar');
+    expect(Number(bars[1].getAttribute('y'))).toBeLessThan(Number(bars[0].getAttribute('y')));
+    expect(Number(bars[1].getAttribute('height'))).toBeGreaterThan(
+      Number(bars[0].getAttribute('height')),
+    );
+    const baseline = Array.from(page.querySelectorAll('svg text')).find(
+      (tick) => tick.textContent?.trim() === '6:36 /km',
+    );
+    expect(Number(baseline?.getAttribute('y'))).toBeCloseTo(184);
+    for (const bar of bars) {
+      expect(Number(bar.getAttribute('y')) + Number(bar.getAttribute('height'))).toBeCloseTo(180);
+    }
   });
 
   it('formats server values and decimal pace without deriving pace from duration', () => {

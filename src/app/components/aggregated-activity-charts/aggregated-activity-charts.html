@@ -1,7 +1,7 @@
 <p class="hint">
   Pace uses elapsed time, including pauses. GAP is grade-adjusted pace. Pace and GAP bars share a
-  vertical scale starting 10% below their minimum value. Heart rate and altitude each use their own
-  scale. Missing measurements appear as gaps.
+  vertical scale with faster paces at the top and a baseline 10% slower than the slowest visible pace.
+  Heart rate and altitude each use their own scale. Missing measurements appear as gaps.
 </p>
 <article class="chart-card">
   <header>
@@ -23,6 +23,12 @@
           >{{ chart.label }} ({{ chart.unit }}) · {{ chart.bars ? 'bars' : 'line' }}</span
         >
       }
+      <span class="pace-highlight-key">
+        <i [style.background]="fastestPaceColor" aria-hidden="true"></i> Fastest pace
+      </span>
+      <span class="pace-highlight-key">
+        <i [style.background]="slowestPaceColor" aria-hidden="true"></i> Slowest pace
+      </span>
     </div>
   </header>
   <svg
@@ -57,8 +63,8 @@
           [attr.y]="bar.y"
           [attr.width]="bar.width"
           [attr.height]="bar.height"
-          [attr.fill]="chart.color"
-          fill-opacity="0.45"
+          [attr.fill]="bar.color"
+          [attr.fill-opacity]="bar.opacity"
         >
           <title>{{ bar.label }}</title>
         </rect>
