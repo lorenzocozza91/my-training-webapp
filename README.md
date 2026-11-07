@@ -2,6 +2,12 @@
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.2.
 
+## Prerequisites
+
+The project uses Angular 22.2.5 and Angular CLI 22.2.6. Use Node.js `^22.22.3 || ^24.15.0 || >=26.0.0` and npm 11.16.0.
+
+Install dependencies with `npm ci`.
+
 ## Development server
 
 To start a local development server, run:
